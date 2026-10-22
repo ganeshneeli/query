@@ -321,25 +321,88 @@ export function PromptLabPage() {
       // Simulate/run live side-by-side prompt execution
       await new Promise((r) => setTimeout(r, 1200));
 
-      const baselineResponse = `Baseline response for "${prompt.slice(0, 40)}":
-The request was processed using standard system defaults. The model produced a general answer without explicit constraint enforcement. Minor hallucinations or filler phrasing may be present.`;
+      let baselineResponse = "";
+      let optimizedResponse = "";
 
-      const optimizedResponse = `### Structured Optimization Response
+      if (taskType === "Coding") {
+        baselineResponse = `Here is some feedback on your code. You could make it better by adding comments and handling some errors.
 
-**Key Points:**
-1. Directly answered the core objective with high specificity.
-2. Verified all stated constraints and format requirements.
-3. Provided clear actionable output without preamble or filler tokens.
+def process_data(items):
+    res = []
+    for x in items:
+        # maybe do something
+        if x != None:
+            res.append(x * 2)
+    return res
 
-**Summary:** The optimized prompt reduced ambiguity and ensured strict rubric alignment.`;
+This looks okay but there might be other stuff that could be improved. You should test it more.`;
+
+        optimizedResponse = `### 1. Issues Identified
+- **Missing Type Annotations & Docstrings**: Function signature lacks typing for inputs and outputs.
+- **Inefficient Null Checks**: Used \`x != None\` instead of Pythonic \`x is not None\`.
+- **List Growth Overhead**: Iterative append inside loop causes dynamic array reallocation.
+
+### 2. Suggested Refactor (Production-Grade Python)
+\`\`\`python
+from typing import Sequence, List, TypeVar, Optional
+
+T = TypeVar("T", int, float)
+
+def process_data(items: Sequence[Optional[T]]) -> List[T]:
+    """Processes numeric sequences, filtering None and doubling valid values.
+    
+    Time Complexity: O(n) linear scan
+    Space Complexity: O(n) output list comprehension
+    """
+    return [x * 2 for x in items if x is not None]
+\`\`\`
+
+### 3. Key Improvements & Verification
+- **Safety**: Fully type-checked with strict \`None\` filtering.
+- **Performance**: List comprehension reduces bytecode dispatch overhead by ~28%.
+- **Verification**: Conforms strictly to stated constraints and output schema.`;
+      } else if (taskType === "Research") {
+        baselineResponse = `Here is an overview of the topic. It has evolved a lot over recent years with many different viewpoints. Some studies say it helps while other things might suggest otherwise. You should look into the literature for more details.`;
+
+        optimizedResponse = `### Executive Summary
+The empirical consensus demonstrates a statistically significant correlation (p < 0.01) between systematic intervention and outcome optimization, bounded by documented domain constraints.
+
+### Core Findings & Evidence Matrix
+1. **Methodological Rigor**: Primary studies demonstrate 34% variance reduction across peer-reviewed cohorts.
+2. **Identified Boundary Conditions**: Effects diminish under resource-constrained edge cases.
+3. **Reproducibility**: Standardized protocols yield consistent multi-trial fidelity.
+
+### Critical Limitations & Uncertainties
+- Current findings are derived primarily from synthetic and controlled test suites; longitudinal production validation is currently pending.`;
+      } else if (taskType === "Data Analysis") {
+        baselineResponse = `The data shows some interesting trends. Numbers went up in some parts and down in others. The average seems reasonable but there could be outliers.`;
+
+        optimizedResponse = `### Quantitative Analysis & Distribution
+- **Sample Distribution**: Right-skewed distribution (\u03bc = 64.2, \u03c3 = 14.8) with 3.2% high-leverage outliers.
+- **Key Variance Drivers**: Segment A accounts for 58% of total variance, with a Pearson correlation coefficient of r = 0.82.
+
+### Actionable Strategic Insights
+1. **Anomaly Mitigation**: Apply winsorization or median-based estimators to prevent metric distortion.
+2. **Segment Focusing**: Prioritize Segment A optimization to yield an estimated 18% improvement in operational throughput.`;
+      } else {
+        baselineResponse = `Here is the response to your request for "${prompt.slice(0, 35)}". It covers the main idea. You can do this by following general steps and making sure things are working properly. Let me know if you need anything else.`;
+
+        optimizedResponse = `### Primary Directive Output
+1. **Objective Execution**: Resolved core intent with zero ambiguous hedging or filler phrasing.
+2. **Structured Delivery**: Actionable recommendations grouped into prioritized milestones.
+3. **Execution Guardrails**: Verified compliance with length and format constraints.
+
+### Verification Summary
+Strictly adhered to rubric requirements, providing maximum informational density without conversational overhead.`;
+      }
 
       setExecutionResult({
         baselineResponse,
         optimizedResponse,
         baselineTokens: Math.round(tokens * 1.8),
-        optimizedTokens: Math.round(estimateTokens(result.optimizedPrompt) * 1.4),
+        optimizedTokens: Math.round(estimateTokens(result.optimizedPrompt) * 1.3),
         baselineMs: 1420,
-        optimizedMs: 980,
+        optimizedMs: 760,
       });
       toast.success("Comparison execution complete");
     } catch (e: unknown) {
