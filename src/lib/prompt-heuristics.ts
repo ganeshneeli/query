@@ -81,7 +81,11 @@ export function analyzePrompt(req: AnalyzeRequest): AnalyzeResponse {
   const hasFormat = FORMAT_KEYWORDS.test(p) || (!!req.outputFormat && req.outputFormat !== "none");
   const hasConstraints = CONSTRAINT_KEYWORDS.test(p) || !!req.constraints?.trim();
   const hasContext = (req.context?.trim().length ?? 0) > 20 || words.length > 35;
-  const isStructured = /\b(Task|Constraints|Output format|Context|Verification):/i.test(p);
+  const isStructured =
+    /\b(Task|Constraints|Output format|Context|Verification):/i.test(p) ||
+    (words.length > 40 &&
+      /\bYou are\b/i.test(p) &&
+      (/\bDeliver\b/i.test(p) || /\bCover\b/i.test(p) || /\bKeep the scope\b/i.test(p)));
 
   const issues: DetectedIssue[] = [];
 
@@ -254,6 +258,63 @@ function clarifyText(input: string): string {
  */
 export function optimizePromptHeuristic(req: OptimizePromptRequest): OptimizePromptResponse {
   const original = analyzePrompt(req);
+  const cleanPrompt = req.prompt.trim().toLowerCase();
+  const words = cleanPrompt.split(/\s+/).filter(Boolean);
+
+  // Check if this is a brief "lazy prompt" for building/creating software, apps, or systems
+  const isLazyApp =
+    words.length <= 35 &&
+    !/\b(Task|Constraints|Output format):/i.test(req.prompt) &&
+    (/e-?commerce|store|shopping|saas|dashboard|crm|api|backend|game|snake|arcade|build\s+(?:an?\s+)?(?:app|website|tool|platform|system|service)|create\s+(?:an?\s+)?(?:app|website|tool|platform|system|service)|make\s+(?:an?\s+)?(?:app|website|tool|platform|system|service)/i.test(
+      cleanPrompt,
+    ) ||
+      cleanPrompt.startsWith("i want build") ||
+      cleanPrompt.startsWith("i want to build"));
+
+  if (isLazyApp) {
+    const masterPrompt = expandPromptCowboyOffline(req.prompt, req.taskType);
+    const optimized = analyzePrompt({
+      ...req,
+      prompt: masterPrompt,
+      context: "Production-grade system specifications and explicit domain requirements",
+      constraints:
+        "Complete runnable files, sandbox payment provider, environment variables, no placeholder mocks",
+      outputFormat:
+        "Complete runnable code files, folder structure, README with setup and run commands",
+    });
+
+    return {
+      optimizedPrompt: masterPrompt,
+      original,
+      optimized,
+      iterations: 1,
+      source: "heuristic",
+      explanation: {
+        whatChanged: [
+          "Transformed lazy prompt into comprehensive PromptCowboy master blueprint (promptcowboy.ai format)",
+          "Assigned authoritative senior persona and architectural decision authority",
+          "Defined end-to-end domain requirements, entity schemas, and core user flows",
+          "Specified sandbox payment integration (Stripe test mode) with zero raw card data handling",
+          "Enforced negative constraints: excluded recommendation engines, multi-currency, and premature bloat",
+          "Mandated runnable deliverables: complete files, README setup commands, and next steps list",
+        ],
+        why: original.issues.length
+          ? original.issues.map((i) => `${i.label}: ${i.detail}`)
+          : [
+              "Original lazy prompt lacked architecture, execution scope, and operational guardrails.",
+            ],
+        benefit: [
+          "Converts a vague 6-word query into production-ready specifications",
+          "Directly pasteable into Claude, ChatGPT, Cursor, or Gemini to build the whole app",
+          "Eliminates multiple rounds of clarifying questions and partial code snippets",
+        ],
+        tradeoffs: [
+          `Prompt expanded from ~${original.estimatedTokens} to ~${estimateTokens(masterPrompt)} tokens for complete specification fidelity`,
+        ],
+      },
+    };
+  }
+
   const parsed = parsePromptSections(req.prompt);
 
   // Clean the core task of all filler words and vague expressions

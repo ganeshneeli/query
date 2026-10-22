@@ -60,4 +60,29 @@ Before answering, briefly check your answer against each constraint.`;
     expect(res.optimized.indicators.specificity).toBeGreaterThan(res.original.indicators.specificity);
     expect(res.optimized.indicators.constraintCoverage).toBeGreaterThan(res.original.indicators.constraintCoverage);
   });
+
+  it("expands lazy prompts like 'i want build and ecommerce app' into PromptCowboy master prompts", () => {
+    const raw = "i want build and ecommerce app";
+    const res = optimizePromptHeuristic({
+      prompt: raw,
+      taskType: "Coding",
+      model: "claude-3.5-sonnet",
+      strategy: "Balanced",
+      maxIterations: 3,
+      outputLength: "medium",
+      temperature: 0.7,
+    });
+
+    // Should generate the exact PromptCowboy master prompt
+    expect(res.optimizedPrompt).toContain("You are a senior full-stack engineer who builds production-ready ecommerce applications");
+    expect(res.optimizedPrompt).toContain("Cover the core shopping flow: a product catalog with listing and detail pages, a shopping cart, a checkout with an order record");
+    expect(res.optimizedPrompt).toContain("Stripe test mode");
+    expect(res.optimizedPrompt).toContain("Do not add recommendation engines, multi-currency, multi-vendor marketplaces");
+
+    // Indicators should jump dramatically
+    expect(res.optimized.indicators.clarity).toBeGreaterThanOrEqual(90);
+    expect(res.optimized.indicators.specificity).toBeGreaterThanOrEqual(90);
+    expect(res.optimized.indicators.constraintCoverage).toBeGreaterThanOrEqual(90);
+  });
 });
+

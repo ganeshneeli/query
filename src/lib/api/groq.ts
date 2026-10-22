@@ -8,8 +8,32 @@ export const FAST_GROQ_MODEL = "llama-3.1-8b-instant";
 const STORAGE_KEY = "promptiq.groq.api_key";
 
 export function getStoredGroqKey(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(STORAGE_KEY) || (import.meta.env["VITE_GROQ_API_KEY"] as string) || "";
+  if (typeof window !== "undefined") {
+    const fromStorage = localStorage.getItem(STORAGE_KEY);
+    if (fromStorage?.trim()) return fromStorage.trim();
+  }
+
+  // Vite client-side environment variable
+  try {
+    if (typeof import.meta !== "undefined" && import.meta.env) {
+      const viteKey = import.meta.env["VITE_GROQ_API_KEY"];
+      if (viteKey && typeof viteKey === "string" && viteKey.trim()) return viteKey.trim();
+    }
+  } catch {
+    // ignore
+  }
+
+  // Server-side (Node / SSR / Cloudflare / Vercel) environment variables
+  try {
+    if (typeof process !== "undefined" && process.env) {
+      const nodeKey = process.env["GROQ_API_KEY"] || process.env["VITE_GROQ_API_KEY"];
+      if (nodeKey && typeof nodeKey === "string" && nodeKey.trim()) return nodeKey.trim();
+    }
+  } catch {
+    // ignore
+  }
+
+  return "";
 }
 
 export function setStoredGroqKey(key: string): void {

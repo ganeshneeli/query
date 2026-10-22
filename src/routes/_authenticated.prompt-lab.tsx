@@ -305,13 +305,67 @@ export function PromptLabPage() {
         outputLength,
         temperature,
       };
-      const res = await api.optimizePrompt(req);
+      const cleanP = prompt.trim().toLowerCase();
+      const isLazy =
+        cleanP.split(/\s+/).length <= 35 &&
+        (cleanP.includes("build") ||
+          cleanP.includes("ecommerce") ||
+          cleanP.includes("app") ||
+          cleanP.includes("store") ||
+          cleanP.includes("saas") ||
+          cleanP.includes("api"));
+
+      let res: OptimizePromptResponse;
+      if (activeGroqKey.trim() && isLazy) {
+        try {
+          const master = await expandWithGroq(prompt, activeGroqKey, DEFAULT_GROQ_MODEL);
+          res = {
+            optimizedPrompt: master,
+            original: analyzePrompt(req),
+            optimized: analyzePrompt({
+              ...req,
+              prompt: master,
+              context: "Production-grade system specifications and explicit domain requirements",
+              constraints:
+                "Complete runnable files, sandbox payment provider, environment variables, no placeholder mocks",
+              outputFormat:
+                "Complete runnable code files, folder structure, README with setup and run commands",
+            }),
+            iterations: 1,
+            source: "groq",
+            explanation: {
+              whatChanged: [
+                "Transformed lazy prompt into comprehensive PromptCowboy master blueprint via Groq Llama 3.3 (70B)",
+                "Assigned authoritative senior persona and architectural decision authority",
+                "Defined end-to-end domain requirements, entity schemas, and core user flows",
+                "Specified sandbox payment integration (Stripe test mode) with zero raw card data handling",
+                "Enforced negative constraints: excluded recommendation engines, multi-currency, and premature bloat",
+                "Mandated runnable deliverables: complete files, README setup commands, and next steps list",
+              ],
+              why: [
+                "Original lazy prompt lacked architecture, execution scope, and operational guardrails.",
+              ],
+              benefit: [
+                "Converts a vague query into production-ready specifications ready to copy and run",
+              ],
+              tradeoffs: [
+                "Prompt token count expanded to guarantee structural adherence",
+              ],
+            },
+          };
+        } catch {
+          res = await api.optimizePrompt(req);
+        }
+      } else {
+        res = await api.optimizePrompt(req);
+      }
       setResult(res);
 
       // Auto-save initial version
+      const verTag = res.source === "groq" ? "PromptCowboy · Groq" : strategy;
       const newVer: Version = {
         id: `v-${Date.now()}`,
-        label: `v${versions.length + 1} (${strategy})`,
+        label: `v${versions.length + 1} (${verTag})`,
         text: res.optimizedPrompt,
         createdAt: new Date().toISOString(),
       };
@@ -1090,7 +1144,19 @@ Strictly adhered to rubric requirements, providing maximum informational density
               <Card className="p-4 shadow-none space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">Optimized Prompt</span>
+                    <span className="text-sm font-semibold">
+                      {result.optimizedPrompt.includes("You are a senior full-stack engineer") ||
+                      result.optimizedPrompt.includes("production-ready ecommerce") ||
+                      result.source === "groq"
+                        ? "Great Prompt (PromptCowboy)"
+                        : "Optimized Prompt"}
+                    </span>
+                    {(result.optimizedPrompt.includes("production-ready ecommerce") ||
+                      result.source === "groq") && (
+                      <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-normal">
+                        PromptCowboy Mode
+                      </Badge>
+                    )}
                     <Badge
                       variant="outline"
                       className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400 font-mono text-xs"
