@@ -85,7 +85,11 @@ export function analyzePrompt(req: AnalyzeRequest): AnalyzeResponse {
     /\b(Task|Constraints|Output format|Context|Verification):/i.test(p) ||
     (words.length > 40 &&
       /\bYou are\b/i.test(p) &&
-      (/\bDeliver\b/i.test(p) || /\bCover\b/i.test(p) || /\bKeep the scope\b/i.test(p)));
+      (/\bDeliver\b/i.test(p) ||
+        /\bCover\b/i.test(p) ||
+        /\bKeep the scope\b/i.test(p) ||
+        /\bStructure your response\b/i.test(p) ||
+        /\bExecutive Summary\b/i.test(p)));
 
   const issues: DetectedIssue[] = [];
 
@@ -261,15 +265,15 @@ export function optimizePromptHeuristic(req: OptimizePromptRequest): OptimizePro
   const cleanPrompt = req.prompt.trim().toLowerCase();
   const words = cleanPrompt.split(/\s+/).filter(Boolean);
 
-  // Check if this is a brief "lazy prompt" for building/creating software, apps, or systems
+  // Check if this is a brief "lazy prompt" (terse, unstructured request)
   const isLazyApp =
-    words.length <= 35 &&
+    words.length <= 40 &&
     !/\b(Task|Constraints|Output format):/i.test(req.prompt) &&
-    (/e-?commerce|store|shopping|saas|dashboard|crm|api|backend|game|snake|arcade|build\s+(?:an?\s+)?(?:app|website|tool|platform|system|service)|create\s+(?:an?\s+)?(?:app|website|tool|platform|system|service)|make\s+(?:an?\s+)?(?:app|website|tool|platform|system|service)/i.test(
+    (/e-?commerce|store|shopping|saas|dashboard|crm|api|backend|game|snake|arcade|\b(?:diff(?:erence)?|vs\.?|versus|compare|comparison)\b|build|create|make|develop|write|code|design|implement/i.test(
       cleanPrompt,
     ) ||
-      cleanPrompt.startsWith("i want build") ||
-      cleanPrompt.startsWith("i want to build"));
+      cleanPrompt.startsWith("i want") ||
+      words.length <= 12);
 
   if (isLazyApp) {
     const masterPrompt = expandPromptCowboyOffline(req.prompt, req.taskType);
@@ -500,7 +504,20 @@ Deliver a complete, self-contained, and immediately runnable game with a complet
 Deliver the complete code in full without placeholders, accompanied by instructions on how to install dependencies and run the game with zero friction.`;
   }
 
-  // 5. General PromptCowboy Synthesis Fallback
+  // 5. Technical Comparison / Difference Archetype (e.g. "diff between java and python")
+  if (/\b(?:diff(?:erence)?|vs\.?|versus|compare|comparison)\b/i.test(p)) {
+    return `You are a principal software engineer and polyglot systems architect. Provide an authoritative, in-depth technical comparison and architectural trade-off analysis for: "${prompt.trim()}".
+
+Structure your response with uncompromising engineering rigor:
+1. Executive Summary & Paradigm Overview: Foundational execution models, type systems, runtime environments, and core philosophy.
+2. Direct Technical Dimension Matrix: Compare across Execution Speed & Concurrency, Memory Footprint & Garbage Collection, Type Safety & Compiler Guarantees, Ecosystem & Standard Library, and Developer Velocity.
+3. Concrete Side-by-Side Code Example: Illustrate identical non-trivial tasks (e.g. concurrent HTTP fetching or data streaming) in both technologies with production-grade syntax and idioms.
+4. Production Decision Framework: Concrete recommendations on when to choose one over the other based on team scale, latency SLAs, system complexity, and long-term maintenance costs.
+
+Avoid surface-level generalities or subjective marketing claims. Provide concrete, empirical trade-offs with explicit boundary conditions.`;
+  }
+
+  // 6. General PromptCowboy Synthesis Fallback
   const persona =
     taskType === "Coding"
       ? "senior software engineer and systems architect"

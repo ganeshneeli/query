@@ -84,5 +84,24 @@ Before answering, briefly check your answer against each constraint.`;
     expect(res.optimized.indicators.specificity).toBeGreaterThanOrEqual(90);
     expect(res.optimized.indicators.constraintCoverage).toBeGreaterThanOrEqual(90);
   });
+
+  it("optimizes comparison prompts like 'diff between java and python' into architectural comparison blueprints", () => {
+    const raw = "diff between java and python";
+    const res = optimizePromptHeuristic({
+      prompt: raw,
+      taskType: "Coding",
+      model: "claude-3.5-sonnet",
+      strategy: "Balanced",
+      maxIterations: 2,
+      outputLength: "medium",
+      temperature: 0.7,
+    });
+
+    expect(res.optimizedPrompt).toContain("polyglot systems architect");
+    expect(res.optimizedPrompt).toContain("Direct Technical Dimension Matrix");
+    expect(res.optimizedPrompt).toContain("Execution Speed & Concurrency");
+    expect(res.optimizedPrompt).toContain("Side-by-Side Code Example");
+    expect(res.optimized.indicators.clarity).toBeGreaterThanOrEqual(90);
+  });
 });
 

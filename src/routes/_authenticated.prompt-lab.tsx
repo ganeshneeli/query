@@ -214,7 +214,6 @@ export function PromptLabPage() {
   const [groqKeyModalOpen, setGroqKeyModalOpen] = useState(false);
   const [groqKeyInput, setGroqKeyInput] = useState(() => getStoredGroqKey());
   const [activeGroqKey, setActiveGroqKey] = useState(() => getStoredGroqKey());
-  const [isGroqExpanding, setIsGroqExpanding] = useState(false);
   const [isTestingGroqKey, setIsTestingGroqKey] = useState(false);
   const [groqTestStatus, setGroqTestStatus] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -295,81 +294,93 @@ export function PromptLabPage() {
     }
     setIsOptimizing(true);
     setExecutionResult(null);
+
+    const startTime = performance.now();
     try {
-      const req: OptimizePromptRequest = {
+      const key = activeGroqKey.trim() || getStoredGroqKey();
+      let masterPrompt = "";
+      let sourceUsed = "";
+
+      if (key) {
+        try {
+          masterPrompt = await expandWithGroq(prompt, key, DEFAULT_GROQ_MODEL);
+          sourceUsed = "Groq LPU Engine";
+        } catch (groqErr) {
+          console.warn("Groq API error, falling back to offline engine:", groqErr);
+          masterPrompt = expandPromptCowboyOffline(prompt, taskType);
+          sourceUsed = "Built-in Engine";
+        }
+      } else {
+        masterPrompt = expandPromptCowboyOffline(prompt, taskType);
+        sourceUsed = "Built-in Engine";
+      }
+
+      const elapsedMs = Math.round(performance.now() - startTime);
+
+      const originalAnalysis = analyzePrompt({
         prompt,
         taskType,
-        ...(context.trim() ? { context: context.trim() } : {}),
-        ...(constraints.trim() ? { constraints: constraints.trim() } : {}),
-        ...(outputFormat.trim() && outputFormat !== "none" ? { outputFormat: outputFormat.trim() } : {}),
+        context: context.trim(),
+        constraints: constraints.trim(),
+        outputFormat,
         model,
         strategy,
         maxIterations,
         outputLength,
         temperature,
-      };
-      const cleanP = prompt.trim().toLowerCase();
-      const isLazy =
-        cleanP.split(/\s+/).length <= 35 &&
-        (cleanP.includes("build") ||
-          cleanP.includes("ecommerce") ||
-          cleanP.includes("app") ||
-          cleanP.includes("store") ||
-          cleanP.includes("saas") ||
-          cleanP.includes("api"));
+      });
 
-      let res: OptimizePromptResponse;
-      if (activeGroqKey.trim() && isLazy) {
-        try {
-          const master = await expandWithGroq(prompt, activeGroqKey, DEFAULT_GROQ_MODEL);
-          res = {
-            optimizedPrompt: master,
-            original: analyzePrompt(req),
-            optimized: analyzePrompt({
-              ...req,
-              prompt: master,
-              context: "Production-grade system specifications and explicit domain requirements",
-              constraints:
-                "Complete runnable files, sandbox payment provider, environment variables, no placeholder mocks",
-              outputFormat:
-                "Complete runnable code files, folder structure, README with setup and run commands",
-            }),
-            iterations: 1,
-            source: "groq",
-            explanation: {
-              whatChanged: [
-                "Transformed lazy prompt into comprehensive PromptCowboy master blueprint via Groq Llama 3.3 (70B)",
-                "Assigned authoritative senior persona and architectural decision authority",
-                "Defined end-to-end domain requirements, entity schemas, and core user flows",
-                "Specified sandbox payment integration (Stripe test mode) with zero raw card data handling",
-                "Enforced negative constraints: excluded recommendation engines, multi-currency, and premature bloat",
-                "Mandated runnable deliverables: complete files, README setup commands, and next steps list",
+      const masterAnalysis = analyzePrompt({
+        prompt: masterPrompt,
+        taskType,
+        context: "Production-grade system specifications and explicit domain requirements",
+        constraints:
+          "Comprehensive deliverables, strict operational boundaries, and zero placeholder mocks",
+        outputFormat:
+          "Complete runnable specification and structured master prompt",
+        model,
+        strategy,
+        maxIterations,
+        outputLength,
+        temperature,
+      });
+
+      const res: OptimizePromptResponse = {
+        optimizedPrompt: masterPrompt,
+        original: originalAnalysis,
+        optimized: masterAnalysis,
+        iterations: 1,
+        source: key && sourceUsed.includes("Groq") ? "groq" : "heuristic",
+        explanation: {
+          whatChanged: [
+            `Transformed prompt into comprehensive master blueprint (${sourceUsed})`,
+            "Assigned authoritative expert persona with domain-specific architecture authority",
+            "Defined end-to-end technical scope, operational criteria, and execution guardrails",
+            "Injected negative constraints and boundary conditions to prevent AI hallucination",
+            "Structured output format into clean, immediately runnable specifications",
+          ],
+          why: originalAnalysis.issues.length
+            ? originalAnalysis.issues.map((i) => `${i.label}: ${i.detail}`)
+            : [
+                "Baseline prompts lack specific personas, technical boundary limits, and execution structure.",
               ],
-              why: [
-                "Original lazy prompt lacked architecture, execution scope, and operational guardrails.",
-              ],
-              benefit: [
-                "Converts a vague query into production-ready specifications ready to copy and run",
-              ],
-              tradeoffs: [
-                "Prompt token count expanded to guarantee structural adherence",
-              ],
-            },
-          };
-        } catch {
-          res = await api.optimizePrompt(req);
-        }
-      } else {
-        res = await api.optimizePrompt(req);
-      }
+          benefit: [
+            "Converts brief or casual requests into production-grade master prompts ready to copy and run",
+            "Eliminates multiple rounds of clarifying questions and partial AI outputs",
+          ],
+          tradeoffs: [
+            `Prompt length expanded from ~${originalAnalysis.estimatedTokens} to ~${masterAnalysis.estimatedTokens} tokens for complete specification fidelity`,
+          ],
+        },
+      };
+
       setResult(res);
 
-      // Auto-save initial version
-      const verTag = res.source === "groq" ? "PromptCowboy · Groq" : strategy;
+      const verLabel = `v${versions.length + 1} (${sourceUsed})`;
       const newVer: Version = {
         id: `v-${Date.now()}`,
-        label: `v${versions.length + 1} (${verTag})`,
-        text: res.optimizedPrompt,
+        label: verLabel,
+        text: masterPrompt,
         createdAt: new Date().toISOString(),
       };
       setVersions((prev) => [newVer, ...prev]);
@@ -377,14 +388,19 @@ export function PromptLabPage() {
       if (mode === "demo") {
         addDemoHistory({
           kind: "prompt",
-          title: `Prompt Optimization: ${prompt.slice(0, 30)}...`,
+          title: `Optimization: ${prompt.slice(0, 30)}...`,
           input: prompt,
-          output: res.optimizedPrompt,
-          model,
+          output: masterPrompt,
+          model: key && sourceUsed.includes("Groq") ? DEFAULT_GROQ_MODEL : model,
           success: true,
         });
       }
-      toast.success("Prompt successfully optimized!");
+
+      if (key && sourceUsed.includes("Groq")) {
+        toast.success(`Prompt optimized with Groq in ${elapsedMs}ms!`);
+      } else {
+        toast.success(`Prompt successfully optimized in ${elapsedMs}ms!`);
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Optimization failed");
     } finally {
@@ -428,131 +444,6 @@ export function PromptLabPage() {
       toast.error(msg);
     } finally {
       setIsTestingGroqKey(false);
-    }
-  };
-
-  const handlePromptCowboyExpand = async () => {
-    if (!prompt.trim()) {
-      toast.error("Please enter a lazy prompt first (e.g. 'i want build and ecommerce app')");
-      return;
-    }
-
-    setIsGroqExpanding(true);
-    setExecutionResult(null);
-
-    const startTime = performance.now();
-    try {
-      let masterPrompt = "";
-      let sourceUsed = "";
-
-      if (activeGroqKey.trim()) {
-        try {
-          masterPrompt = await expandWithGroq(prompt, activeGroqKey, DEFAULT_GROQ_MODEL);
-          sourceUsed = "Groq Llama 3.3 (70B)";
-        } catch (groqErr) {
-          console.warn("Groq API error, falling back to offline archetype:", groqErr);
-          toast.error(
-            `Groq error: ${groqErr instanceof Error ? groqErr.message : "Request failed"}. Using offline archetype.`,
-          );
-          masterPrompt = expandPromptCowboyOffline(prompt, taskType);
-          sourceUsed = "PromptCowboy Offline Engine";
-        }
-      } else {
-        masterPrompt = expandPromptCowboyOffline(prompt, taskType);
-        sourceUsed = "PromptCowboy Offline Engine";
-      }
-
-      const elapsedMs = Math.round(performance.now() - startTime);
-
-      const originalAnalysis = analyzePrompt({
-        prompt,
-        taskType,
-        context: context.trim(),
-        constraints: constraints.trim(),
-        outputFormat,
-        model,
-        strategy,
-        maxIterations,
-        outputLength,
-        temperature,
-      });
-
-      const masterAnalysis = analyzePrompt({
-        prompt: masterPrompt,
-        taskType,
-        context: "Production-grade system specifications and explicit domain requirements",
-        constraints: "Complete runnable files, sandbox payment provider, environment variables, no placeholder mocks",
-        outputFormat: "Complete runnable code files, folder structure, README with setup and run commands",
-        model,
-        strategy,
-        maxIterations,
-        outputLength,
-        temperature,
-      });
-
-      const res: OptimizePromptResponse = {
-        optimizedPrompt: masterPrompt,
-        original: originalAnalysis,
-        optimized: masterAnalysis,
-        iterations: 1,
-        source: activeGroqKey.trim() ? "groq" : "heuristic",
-        explanation: {
-          whatChanged: [
-            `Transformed lazy prompt into comprehensive PromptCowboy master blueprint (${sourceUsed})`,
-            "Assigned authoritative senior persona and architectural decision authority",
-            "Defined end-to-end domain requirements, entity schemas, and core user flows",
-            "Specified sandbox payment integration (Stripe test mode) with zero card data handling",
-            "Enforced negative constraints: excluded recommendation engines, multi-currency, and unnecessary bloat",
-            "Mandated runnable deliverables: complete files, README setup commands, and next steps list",
-          ],
-          why: [
-            "Original lazy prompt lacked architecture, execution scope, and operational guardrails.",
-            "LLMs require explicit personas, boundaries, and negative constraints to avoid hallucinated or partial sketches.",
-          ],
-          benefit: [
-            "Converts a vague 6-word query into production-ready specifications",
-            "Directly pasteable into Claude, ChatGPT, Cursor, or Gemini to build the whole app",
-            "Eliminates multiple rounds of clarifying questions and partial code snippets",
-          ],
-          tradeoffs: [
-            `Prompt length expanded from ~${originalAnalysis.estimatedTokens} to ~${masterAnalysis.estimatedTokens} tokens for complete specification fidelity`,
-          ],
-        },
-      };
-
-      setResult(res);
-
-      const verLabel = `v${versions.length + 1} (PromptCowboy · ${sourceUsed})`;
-      const newVer: Version = {
-        id: `v-${Date.now()}`,
-        label: verLabel,
-        text: masterPrompt,
-        createdAt: new Date().toISOString(),
-      };
-      setVersions((prev) => [newVer, ...prev]);
-
-      if (mode === "demo") {
-        addDemoHistory({
-          kind: "prompt",
-          title: `PromptCowboy: ${prompt.slice(0, 30)}...`,
-          input: prompt,
-          output: masterPrompt,
-          model: activeGroqKey.trim() ? DEFAULT_GROQ_MODEL : "promptcowboy-offline",
-          success: true,
-        });
-      }
-
-      if (activeGroqKey.trim()) {
-        toast.success(`PromptCowboy expanded via Groq Llama 3.3 in ${elapsedMs}ms!`);
-      } else {
-        toast.success(
-          `PromptCowboy expanded via Offline Archetype in ${elapsedMs}ms! Click 'Groq API Key' to enable arbitrary prompts.`,
-        );
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "PromptCowboy expansion failed");
-    } finally {
-      setIsGroqExpanding(false);
     }
   };
 
@@ -948,7 +839,7 @@ Strictly adhered to rubric requirements, providing maximum informational density
                   onClick={() => setGroqKeyModalOpen(true)}
                 >
                   <Key className="mr-1 h-3 w-3 text-amber-500" />
-                  {activeGroqKey.trim() ? "Groq Llama 3.3 Connected" : "⚡ Groq Key (Offline Mode)"}
+                  {activeGroqKey.trim() ? "⚡ Groq Connected" : "⚡ Groq Key (Offline Mode)"}
                 </Button>
               </div>
             </div>
@@ -1034,35 +925,15 @@ Strictly adhered to rubric requirements, providing maximum informational density
 
               <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePromptCowboyExpand}
-                  disabled={!prompt.trim() || isGroqExpanding || isOptimizing}
-                  className="text-xs border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 font-medium"
-                >
-                  {isGroqExpanding ? (
-                    <>
-                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin text-amber-500" />
-                      Expanding...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-1.5 h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                      PromptCowboy Expand
-                    </>
-                  )}
-                </Button>
-
-                <Button
                   size="sm"
                   onClick={handleAnalyzeAndOptimize}
-                  disabled={!prompt.trim() || isOptimizing || isGroqExpanding}
-                  className="min-w-36 font-medium"
+                  disabled={!prompt.trim() || isOptimizing}
+                  className="min-w-40 font-medium"
                 >
                   {isOptimizing ? (
                     <>
                       <Sparkles className="mr-1.5 h-4 w-4 animate-spin" />
-                      Optimizing...
+                      Optimizing Prompt...
                     </>
                   ) : (
                     <>
