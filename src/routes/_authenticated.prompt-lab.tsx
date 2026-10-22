@@ -1065,18 +1065,16 @@ Strictly adhered to rubric requirements, providing maximum informational density
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold">
-                      {result.source === "groq"
-                        ? "Great Prompt (Groq LLM Live)"
-                        : "Great Prompt (PromptCowboy)"}
+                      Optimized Prompt
                     </span>
                     {result.source === "groq" ? (
                       <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 text-[10px] font-medium flex items-center gap-1">
                         <Sparkles className="h-2.5 w-2.5 text-emerald-500" />
-                        Live LLM Synthesis
+                        Live Groq Synthesis
                       </Badge>
                     ) : (
-                      <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-normal">
-                        PromptCowboy Mode
+                      <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-normal">
+                        Optimized
                       </Badge>
                     )}
                     <Badge

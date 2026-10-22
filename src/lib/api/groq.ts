@@ -75,59 +75,79 @@ export function buildGroqPromptSystemPrompt(options?: GroqOptimizationOptions): 
         : "Medium (150–300 words)";
   const targetModel = options?.targetModel || "gpt-4o-mini";
 
-  return `You are PromptIQ's Chief AI Prompt Engineer, powered by Groq LPU inference.
-Your job is to transform the user's input prompt into the single best, most effective, production-grade prompt for an LLM (such as ${targetModel}).
+  return `You are PromptIQ's Chief Prompt Architect, powered by Groq LPU inference.
+Your job is to transform the user's input prompt into a clean, plain, beautifully structured production-grade prompt for an LLM (such as ${targetModel}).
 
-CORE PRINCIPLES:
-1. NEVER REPEAT STATIC TEMPLATES OR CANNED FORMULAS. Do NOT use repetitive boilerplate phrases like "I'm writing a prompt for another AI..." or identical cookie-cutter section lists across different prompts. Every generated prompt must be uniquely crafted, organic, and directly tailored to the specific topic, domain, and task type.
-2. DO NOT ANSWER THE PROMPT. You are NOT writing the answer to the prompt yourself. You are writing the OPTIMIZED PROMPT instructions that the user will give to an AI.
-3. FIX ALL WEAKNESSES IN THE ORIGINAL PROMPT:
-   - Eliminate vague or colloquial wording (e.g. "kind of work better" -> replace with precise technical, mathematical, and architectural criteria).
-   - Inject necessary context, domain terminology, and foundational assumptions.
-   - Define sharp operational constraints (scope boundaries, exclusions, edge cases, length limits matching "${lengthDesc}").
-   - Specify a clean, professional output format.
-4. RESPECT THE USER'S CONFIGURATION:
-   - Task Type: ${taskType} (infuse appropriate domain depth and evaluation criteria).
-   - Strategy: ${strategy} (if Quality First, enforce rigorous validation and depth; if Balanced, keep it sharp, practical, and punchy; if Low Cost/Latency, prioritize concise, high-density instructions).
-   - Target Model: ${targetModel}
-5. OUTPUT CLEANLINESS:
-   - Output ONLY the final optimized prompt text.
-   - Do NOT include markdown code fences (\`\`\`), do NOT include meta-chatter ("Here is your prompt:"), do NOT include headers like "**Master Prompt:**" or decorative dividers ("---").
-   - The result must be immediately ready to copy, send, or use.`;
+STRICT PLAIN STRUCTURED FORMAT:
+Output the final prompt using this exact clean, plain text structure (NO asterisks at the start, NO "Master Prompt:", NO "Great Prompt:", NO conversational preamble, NO markdown code fences):
+
+You are a [Expert Persona tailored to the task].
+
+Task:
+[Clear, precise, comprehensive task description eliminating all ambiguity and informal phrasing]
+
+Context:
+[Key domain background, technical scope, and operational baseline]
+
+Constraints:
+- [Explicit boundary / negative constraint]
+- [Edge case handling or quality requirement]
+- [Length limit matching "${lengthDesc}"]
+
+Output Format:
+[Structured section markers, layout requirements, or schema]
+
+CRITICAL RULES:
+1. Do NOT answer the prompt. You are writing the prompt instructions for another AI.
+2. Do NOT add decorative asterisks, stars ('**'), bold markers, or hashtags ('#') around section names. Use clean plain text headers ("Task:", "Context:", "Constraints:", "Output Format:").
+3. Do NOT include conversational filler like "I'm writing a prompt...", "Here is your prompt:", or markdown divider lines ("---").
+4. Eliminate all colloquial or vague wording from the original prompt (e.g., "kind of work better" -> replace with precise technical and architectural criteria).
+5. Output ONLY the plain structured prompt text so it is ready to copy and run immediately.`;
 }
 
 export const PROMPT_COWBOY_SYSTEM_PROMPT = buildGroqPromptSystemPrompt();
 
 function cleanPromptCowboyOutput(raw: string): string {
   let cleaned = raw.trim();
-  // Strip markdown code block wrappers if the model wrapped the entire prompt in ```
+
+  // Strip code block wrappers
   if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
     cleaned = cleaned.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
   }
-  // Strip header lines like "**Master Prompt...**" or "### Optimized Prompt" or decorative dividers "---"
+
+  // Strip leading meta-headers like "**Master Prompt:**", "### Great Prompt", "**Great Prompt (PromptCowboy)**"
   cleaned = cleaned
     .replace(
-      /^(\*{1,3}|#{1,4})\s*(?:Master|Optimized|Refined|Production-Grade)?\s*Prompt[^:\n]*[:\n]*(\*{1,3})?\s*/i,
+      /^(?:\*{1,3}|#{1,4})?\s*(?:Great|Master|Optimized|Refined|Production-Grade)?\s*Prompt[^\n]*\n+/i,
       "",
     )
-    .replace(/^---\s*\n*/, "")
-    .replace(/\n*---\s*$/, "")
     .trim();
 
-  // Strip leading conversational phrases like "Here is your PromptCowboy prompt:" or "Prompt:"
+  // Strip leading horizontal rules or stars or decorative dividers
+  cleaned = cleaned.replace(/^(?:---|--|\*\*\*|___)\s*\n+/m, "").trim();
+
+  // Un-bold section headers if the model bolded them like **Task:** or **Context:**
+  cleaned = cleaned.replace(/^\*\*([A-Za-z\s]+):\*\*/gm, "$1:");
+
+  // Strip conversational intro phrases
   cleaned = cleaned
     .replace(
-      /^(?:Here is (?:your|the) (?:PromptCowboy|master|optimized|production-grade)?\s*prompt:?|Prompt:?)\s*/i,
+      /^(?:Here is (?:your|the) (?:optimized|great|master|production-grade)?\s*prompt:?)\s*/i,
       "",
     )
     .trim();
-  // Strip surrounding quotes if wrapped
+
+  // Strip trailing divider lines
+  cleaned = cleaned.replace(/\n*-{3,}\s*$/, "").trim();
+
+  // Strip surrounding quotes
   if (
     (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
     (cleaned.startsWith("“") && cleaned.endsWith("”"))
   ) {
     cleaned = cleaned.slice(1, -1).trim();
   }
+
   return cleaned;
 }
 
