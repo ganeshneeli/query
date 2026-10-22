@@ -83,16 +83,24 @@ export function analyzePrompt(req: AnalyzeRequest): AnalyzeResponse {
   const hasConstraints = CONSTRAINT_KEYWORDS.test(p) || !!req.constraints?.trim();
   const hasContext = (req.context?.trim().length ?? 0) > 20 || words.length > 35;
   const isStructured =
-    /\b(Task|Constraints|Output format|Context|Verification):/i.test(p) ||
-    (words.length > 40 &&
-      (/\bYou are\b/i.test(p) || /\bI'm writing a prompt for another AI\b/i.test(p)) &&
+    /\b(Task|Constraints|Output format|Context|Verification|Requirements|Mechanism|Comparison):/i.test(p) ||
+    /^(?:##|\*\*\d+\.|\d+\.\s+\*\*)/m.test(p) ||
+    (words.length > 35 &&
+      (/\bYou are\b/i.test(p) ||
+        /\bI'm writing a prompt\b/i.test(p) ||
+        /\bWrite a\b/i.test(p) ||
+        /\bProvide a\b/i.test(p) ||
+        /\bDeliver\b/i.test(p) ||
+        /\bStructure\b/i.test(p)) &&
       (/\bDeliver\b/i.test(p) ||
         /\bCover\b/i.test(p) ||
-        /\bKeep the scope\b/i.test(p) ||
-        /\bStructure your response\b/i.test(p) ||
+        /\bKeep the\b/i.test(p) ||
+        /\bStructure\b/i.test(p) ||
+        /\bsection/i.test(p) ||
         /\bExecutive Summary\b/i.test(p) ||
         /\bconcrete example\b/i.test(p) ||
         /\bfactually accurate\b/i.test(p) ||
+        /\bword range\b/i.test(p) ||
         /\bcore idea\b/i.test(p)));
 
   const issues: DetectedIssue[] = [];

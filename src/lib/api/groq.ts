@@ -53,28 +53,50 @@ export function setStoredGroqKey(key: string): void {
   }
 }
 
-export const PROMPT_COWBOY_SYSTEM_PROMPT = `You are PromptCowboy (promptcowboy.ai), the world-class AI prompt synthesizer.
-Your sole job is to turn brief "lazy prompts" into cohesive, natural, production-grade master prompts to be fed to another LLM.
+export interface GroqOptimizationOptions {
+  taskType?: string;
+  strategy?: string;
+  outputLength?: "short" | "medium" | "long" | string;
+  targetModel?: string;
+  context?: string;
+  constraints?: string;
+  outputFormat?: string;
+  temperature?: number;
+}
 
-CRITICAL DIRECTIVES:
-1. DO NOT answer the user prompt directly. You are NOT explaining the topic or writing the application code yourself. You are writing the PROMPT instructions that the user will copy and paste into another AI (like ChatGPT, Claude, or Cursor).
-2. Deliver ONLY the raw prompt text. No introductory pleasantries, no conversational filler ("Here is your prompt:"), no markdown section headers (NO "System Role:", "Task:", "Output Example:"), and no bulleted checklists. Write fluent, natural 2-4 paragraph prose, exactly like PromptCowboy.
-3. ADAPT PROPORTIONATELY TO THE PROMPT INTENT:
-   - For CONCEPT / EDUCATIONAL / INFORMATIONAL / QUESTION prompts (e.g. "what is java", "explain docker", "how does oauth work", "what is python"):
-     Always open with:
-     "I'm writing a prompt for another AI, so the deliverable is the instructions below rather than an explanation of [Topic] itself."
-     Follow with:
-     "You are a senior software engineer with broad experience across [Topic] and its ecosystem. I am a learner who wants a clear answer to the question: [question]? Explain what [Topic] is in a way that gives me a solid, accurate foundation. Cover what kind of language/technology and platform it is, what problems it was designed to solve, and what the [runtime/core architecture] does. Include the main ways [Topic] is used today, such as [primary modern use cases], and briefly note what the [Topic] ecosystem offers around the technology, such as its standard library and build tools. Keep the explanation accessible to someone new to programming, define any technical term the first time it appears, and use one short, concrete example to illustrate the core idea. Make sure the answer is factually accurate and reflects how [Topic] is commonly described today."
-     NEVER instruct the AI to build an enterprise multi-file application or generate build scripts (like Maven or Docker) for simple conceptual questions!
-   - For APPLICATION / CODEBASE BUILDING prompts (e.g. "i want build and ecommerce app", "write a snake game", "build a saas dashboard"):
-     "You are a senior full-stack engineer who builds production-ready applications. I want you to build [App] from scratch. I have not yet specified a stack, platform, or feature set, so make sensible, modern choices and state them clearly at the top of your response so I can see what you chose and why.
-     Build it as a working, runnable project rather than a sketch. Cover the core user flow... Use a database for persistence, keep secrets in environment variables, and structure the code cleanly. Keep the scope to what makes a working [App]. Prioritize clean, readable code with a clear folder structure, a README with setup and run instructions, and a short list of what to build next. Deliver the project as complete files I can run locally, and close with the exact commands to install, configure, and start it."
-   - For COMPARISON / DIFFERENCE prompts (e.g. "diff between java and python", "postgres vs mongodb"):
-     "You are a principal software engineer and polyglot systems architect. Provide an authoritative, in-depth technical comparison and architectural trade-off analysis for: [comparison]..." Cover foundational execution models, type systems, runtime performance, concurrency, a concrete side-by-side code example for the same task, and a production decision framework.
-   - For CODE REVIEW / REFACTORING prompts:
-     "You are a senior software engineer. Perform an in-depth code review..." Focus on issues found, suggested refactor, and performance/maintainability improvements.
-   - For WRITING / MARKETING / GENERAL prompts:
-     Assign an authoritative expert persona, define target audience, tone, outline, key takeaways, and negative constraints against generic AI filler.`;
+export function buildGroqPromptSystemPrompt(options?: GroqOptimizationOptions): string {
+  const taskType = options?.taskType || "General";
+  const strategy = options?.strategy || "Balanced";
+  const lengthDesc =
+    options?.outputLength === "short"
+      ? "Short (<120 words)"
+      : options?.outputLength === "long"
+        ? "Long (up to 800 words)"
+        : "Medium (150–300 words)";
+  const targetModel = options?.targetModel || "gpt-4o-mini";
+
+  return `You are PromptIQ's Chief AI Prompt Engineer, powered by Groq LPU inference.
+Your job is to transform the user's input prompt into the single best, most effective, production-grade prompt for an LLM (such as ${targetModel}).
+
+CORE PRINCIPLES:
+1. NEVER REPEAT STATIC TEMPLATES OR CANNED FORMULAS. Do NOT use repetitive boilerplate phrases like "I'm writing a prompt for another AI..." or identical cookie-cutter section lists across different prompts. Every generated prompt must be uniquely crafted, organic, and directly tailored to the specific topic, domain, and task type.
+2. DO NOT ANSWER THE PROMPT. You are NOT writing the answer to the prompt yourself. You are writing the OPTIMIZED PROMPT instructions that the user will give to an AI.
+3. FIX ALL WEAKNESSES IN THE ORIGINAL PROMPT:
+   - Eliminate vague or colloquial wording (e.g. "kind of work better" -> replace with precise technical, mathematical, and architectural criteria).
+   - Inject necessary context, domain terminology, and foundational assumptions.
+   - Define sharp operational constraints (scope boundaries, exclusions, edge cases, length limits matching "${lengthDesc}").
+   - Specify a clean, professional output format.
+4. RESPECT THE USER'S CONFIGURATION:
+   - Task Type: ${taskType} (infuse appropriate domain depth and evaluation criteria).
+   - Strategy: ${strategy} (if Quality First, enforce rigorous validation and depth; if Balanced, keep it sharp, practical, and punchy; if Low Cost/Latency, prioritize concise, high-density instructions).
+   - Target Model: ${targetModel}
+5. OUTPUT CLEANLINESS:
+   - Output ONLY the final optimized prompt text.
+   - Do NOT include markdown code fences (\`\`\`), do NOT include meta-chatter ("Here is your prompt:"), do NOT include headers like "**Master Prompt:**" or decorative dividers ("---").
+   - The result must be immediately ready to copy, send, or use.`;
+}
+
+export const PROMPT_COWBOY_SYSTEM_PROMPT = buildGroqPromptSystemPrompt();
 
 function cleanPromptCowboyOutput(raw: string): string {
   let cleaned = raw.trim();
@@ -82,6 +104,16 @@ function cleanPromptCowboyOutput(raw: string): string {
   if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
     cleaned = cleaned.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
   }
+  // Strip header lines like "**Master Prompt...**" or "### Optimized Prompt" or decorative dividers "---"
+  cleaned = cleaned
+    .replace(
+      /^(\*{1,3}|#{1,4})\s*(?:Master|Optimized|Refined|Production-Grade)?\s*Prompt[^:\n]*[:\n]*(\*{1,3})?\s*/i,
+      "",
+    )
+    .replace(/^---\s*\n*/, "")
+    .replace(/\n*---\s*$/, "")
+    .trim();
+
   // Strip leading conversational phrases like "Here is your PromptCowboy prompt:" or "Prompt:"
   cleaned = cleaned
     .replace(
@@ -108,6 +140,7 @@ export async function expandWithGroqDetailed(
   prompt: string,
   apiKey?: string,
   preferredModel = DEFAULT_GROQ_MODEL,
+  options?: GroqOptimizationOptions,
 ): Promise<GroqExpansionResponse> {
   const key = apiKey?.trim() || getStoredGroqKey();
   if (!key) {
@@ -115,6 +148,21 @@ export async function expandWithGroqDetailed(
       "Groq API key required. Please enter your key in the Groq settings modal or set VITE_GROQ_API_KEY in .env.",
     );
   }
+
+  const systemContent = buildGroqPromptSystemPrompt(options);
+
+  const contextSnippet = options?.context?.trim()
+    ? `\nBackground Context: ${options.context.trim()}`
+    : "";
+  const constraintsSnippet = options?.constraints?.trim()
+    ? `\nUser Constraints: ${options.constraints.trim()}`
+    : "";
+  const formatSnippet =
+    options?.outputFormat && options.outputFormat !== "none"
+      ? `\nDesired Output Format: ${options.outputFormat}`
+      : "";
+
+  const userContent = `Original User Prompt:\n"${prompt}"\n\nTask Type: ${options?.taskType || "General"}\nStrategy: ${options?.strategy || "Balanced"}\nOutput Length: ${options?.outputLength || "medium"}${contextSnippet}${constraintsSnippet}${formatSnippet}\n\nProduce the single best optimized prompt for this request.`;
 
   const modelsToTry = [
     preferredModel,
@@ -132,16 +180,19 @@ export async function expandWithGroqDetailed(
         },
         body: JSON.stringify({
           model,
-          temperature: 0.4,
+          temperature:
+            options?.temperature !== undefined
+              ? Math.min(Math.max(options.temperature, 0.2), 0.8)
+              : 0.5,
           max_tokens: 1500,
           messages: [
             {
               role: "system",
-              content: PROMPT_COWBOY_SYSTEM_PROMPT,
+              content: systemContent,
             },
             {
               role: "user",
-              content: `Transform this lazy prompt into an incredible, detailed PromptCowboy-grade prompt:\n\n"${prompt}"`,
+              content: userContent,
             },
           ],
         }),
@@ -197,8 +248,9 @@ export async function expandWithGroq(
   prompt: string,
   apiKey?: string,
   preferredModel = DEFAULT_GROQ_MODEL,
+  options?: GroqOptimizationOptions,
 ): Promise<string> {
-  const res = await expandWithGroqDetailed(prompt, apiKey, preferredModel);
+  const res = await expandWithGroqDetailed(prompt, apiKey, preferredModel, options);
   return res.prompt;
 }
 

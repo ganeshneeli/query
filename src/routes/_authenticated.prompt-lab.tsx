@@ -305,7 +305,16 @@ export function PromptLabPage() {
 
       if (key) {
         try {
-          const groqRes = await expandWithGroqDetailed(prompt, key, DEFAULT_GROQ_MODEL);
+          const groqRes = await expandWithGroqDetailed(prompt, key, DEFAULT_GROQ_MODEL, {
+            taskType,
+            strategy,
+            outputLength,
+            targetModel: model,
+            context,
+            constraints,
+            outputFormat,
+            temperature,
+          });
           masterPrompt = groqRes.prompt;
           modelUsed = groqRes.model;
           sourceUsed = `Groq LLM (${groqRes.model})`;
