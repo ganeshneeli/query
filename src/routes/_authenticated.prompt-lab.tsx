@@ -66,6 +66,7 @@ import {
   expandWithGroq,
   getStoredGroqKey,
   setStoredGroqKey,
+  testGroqConnection,
   DEFAULT_GROQ_MODEL,
 } from "@/lib/api/groq";
 import type {
@@ -214,6 +215,8 @@ export function PromptLabPage() {
   const [groqKeyInput, setGroqKeyInput] = useState(() => getStoredGroqKey());
   const [activeGroqKey, setActiveGroqKey] = useState(() => getStoredGroqKey());
   const [isGroqExpanding, setIsGroqExpanding] = useState(false);
+  const [isTestingGroqKey, setIsTestingGroqKey] = useState(false);
+  const [groqTestStatus, setGroqTestStatus] = useState<{ ok: boolean; message: string } | null>(null);
 
   const tokens = estimateTokens(prompt + context + constraints);
 
@@ -397,6 +400,34 @@ export function PromptLabPage() {
       toast.success("Groq API key saved in browser storage");
     } else {
       toast.info("Groq key removed. Operating in offline archetype mode.");
+    }
+  };
+
+  const handleTestGroq = async () => {
+    const keyToTest = groqKeyInput.trim() || activeGroqKey.trim() || getStoredGroqKey();
+    if (!keyToTest) {
+      toast.error("Please enter a Groq API key first");
+      return;
+    }
+    setIsTestingGroqKey(true);
+    setGroqTestStatus(null);
+    try {
+      const res = await testGroqConnection(keyToTest);
+      setGroqTestStatus({
+        ok: res.ok,
+        message: res.message,
+      });
+      if (res.ok) {
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Connection test failed";
+      setGroqTestStatus({ ok: false, message: msg });
+      toast.error(msg);
+    } finally {
+      setIsTestingGroqKey(false);
     }
   };
 
@@ -1434,14 +1465,43 @@ Strictly adhered to rubric requirements, providing maximum informational density
 
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Groq API Key</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Groq API Key</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[11px] px-2"
+                  disabled={isTestingGroqKey || (!groqKeyInput.trim() && !activeGroqKey.trim())}
+                  onClick={handleTestGroq}
+                >
+                  <RefreshCw
+                    className={`mr-1 h-3 w-3 ${isTestingGroqKey ? "animate-spin" : ""}`}
+                  />
+                  {isTestingGroqKey ? "Testing..." : "Test Connection"}
+                </Button>
+              </div>
               <Input
                 type="password"
                 placeholder="gsk_..."
                 value={groqKeyInput}
-                onChange={(e) => setGroqKeyInput(e.target.value)}
+                onChange={(e) => {
+                  setGroqKeyInput(e.target.value);
+                  setGroqTestStatus(null);
+                }}
                 className="font-mono text-xs"
               />
+              {groqTestStatus && (
+                <div
+                  className={`rounded-md p-2 text-xs flex items-center gap-1.5 ${
+                    groqTestStatus.ok
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                      : "bg-destructive/10 text-destructive border border-destructive/30"
+                  }`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{groqTestStatus.message}</span>
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Get a free key from{" "}
                 <a
@@ -1452,20 +1512,19 @@ Strictly adhered to rubric requirements, providing maximum informational density
                 >
                   console.groq.com/keys
                 </a>
-                . If left blank, PromptIQ automatically uses its built-in offline archetype engine.
+                . You can also define <code>VITE_GROQ_API_KEY</code> in <code>.env</code>.
               </p>
             </div>
 
             <div className="rounded-md border p-2.5 text-xs bg-muted/30 space-y-1">
               <div className="flex items-center justify-between font-medium">
-                <span>Active Groq Model</span>
+                <span>Active Groq Models</span>
                 <Badge variant="outline" className="font-mono text-[10px]">
                   {DEFAULT_GROQ_MODEL}
                 </Badge>
               </div>
               <p className="text-muted-foreground text-[11px]">
-                Meta Llama 3.3 70B Versatile. Generates complete, runnable master prompts in under 1
-                second.
+                High-speed LPU inference engine. Automatically selects the optimal available model (<code>openai/gpt-oss-120b</code>, <code>qwen/qwen3.8-27b</code>, <code>llama-3.3-70b-versatile</code>) at ~800 tokens/sec.
               </p>
             </div>
           </div>

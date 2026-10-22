@@ -1,9 +1,17 @@
 // Groq API client for ultra-fast, high-intelligence PromptCowboy-style prompt expansion.
-// Groq runs Llama 3.3 (70B) at 500-800 tokens/sec.
+// Groq runs open-source models at 500-800 tokens/sec.
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-export const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
-export const FAST_GROQ_MODEL = "llama-3.1-8b-instant";
+export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
+export const FAST_GROQ_MODEL = "qwen/qwen3.8-27b";
+
+export const CANDIDATE_GROQ_MODELS = [
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-20b",
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+];
 
 const STORAGE_KEY = "promptiq.groq.api_key";
 
@@ -61,56 +69,123 @@ Output ONLY the final, polished master prompt text without conversational filler
 
 export async function expandWithGroq(
   prompt: string,
-  apiKey: string,
-  model = DEFAULT_GROQ_MODEL,
+  apiKey?: string,
+  preferredModel = DEFAULT_GROQ_MODEL,
 ): Promise<string> {
-  const key = apiKey.trim() || getStoredGroqKey();
+  const key = apiKey?.trim() || getStoredGroqKey();
   if (!key) {
-    throw new Error("Groq API key required. Please enter your key in the Groq settings modal.");
+    throw new Error(
+      "Groq API key required. Please enter your key in the Groq settings modal or set VITE_GROQ_API_KEY in .env.",
+    );
   }
 
-  const res = await fetch(GROQ_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.6,
-      max_tokens: 1500,
-      messages: [
-        {
-          role: "system",
-          content: PROMPT_COWBOY_SYSTEM_PROMPT,
-        },
-        {
-          role: "user",
-          content: `Transform this lazy prompt into an incredible, detailed PromptCowboy-grade prompt:\n\n"${prompt}"`,
-        },
-      ],
-    }),
-  });
+  const modelsToTry = [
+    preferredModel,
+    ...CANDIDATE_GROQ_MODELS.filter((m) => m !== preferredModel),
+  ];
+  let lastError = "";
 
-  if (!res.ok) {
-    let errorDetail = res.statusText;
+  for (const model of modelsToTry) {
     try {
-      const errJson = (await res.json()) as { error?: { message?: string } };
-      if (errJson.error?.message) errorDetail = errJson.error.message;
-    } catch {
-      // ignore
+      const res = await fetch(GROQ_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.6,
+          max_tokens: 1500,
+          messages: [
+            {
+              role: "system",
+              content: PROMPT_COWBOY_SYSTEM_PROMPT,
+            },
+            {
+              role: "user",
+              content: `Transform this lazy prompt into an incredible, detailed PromptCowboy-grade prompt:\n\n"${prompt}"`,
+            },
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as {
+          choices?: { message?: { content?: string } }[];
+        };
+        const expanded = data.choices?.[0]?.message?.content?.trim();
+        if (expanded) return expanded;
+      }
+
+      let errorDetail = res.statusText;
+      try {
+        const errJson = (await res.json()) as { error?: { message?: string; code?: string } };
+        if (errJson.error?.message) errorDetail = errJson.error.message;
+        if (
+          errJson.error?.code === "model_not_found" ||
+          errorDetail.includes("does not exist") ||
+          errorDetail.includes("access to it")
+        ) {
+          lastError = errorDetail;
+          continue;
+        }
+      } catch {
+        // ignore
+      }
+      throw new Error(`Groq API error (${res.status}): ${errorDetail}`);
+    } catch (err: unknown) {
+      if (
+        err instanceof Error &&
+        (err.message.includes("model_not_found") ||
+          err.message.includes("does not exist") ||
+          err.message.includes("access to it"))
+      ) {
+        lastError = err.message;
+        continue;
+      }
+      throw err;
     }
-    throw new Error(`Groq API error (${res.status}): ${errorDetail}`);
   }
 
-  const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
+  throw new Error(`Groq API error: None of the candidate models were available. (${lastError})`);
+}
 
-  const expanded = data.choices?.[0]?.message?.content?.trim();
-  if (!expanded) {
-    throw new Error("Groq returned an empty response. Please try again.");
+export async function testGroqConnection(
+  apiKey?: string,
+): Promise<{ ok: boolean; model: string; message: string }> {
+  const key = apiKey?.trim() || getStoredGroqKey();
+  if (!key) {
+    return { ok: false, model: "", message: "No Groq API key found." };
   }
 
-  return expanded;
+  for (const model of CANDIDATE_GROQ_MODELS) {
+    try {
+      const res = await fetch(GROQ_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.1,
+          max_tokens: 5,
+          messages: [{ role: "user", content: "hi" }],
+        }),
+      });
+
+      if (res.ok) {
+        return {
+          ok: true,
+          model,
+          message: `Connected successfully using ${model}!`,
+        };
+      }
+    } catch {
+      // try next
+    }
+  }
+
+  return { ok: false, model: "", message: "Failed to connect to Groq with provided key." };
 }
