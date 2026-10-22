@@ -453,18 +453,55 @@ export function QueryLabPage() {
                     {searchResult.optimizedQuery}
                   </div>
 
-                  <div className="pt-2 border-t">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
-                      Original vs. Optimized Comparison
-                    </span>
-                    <ComparisonPanel
-                      original={searchQuery}
-                      optimized={searchResult.optimizedQuery}
-                      leftLabel="Original Search Query"
-                      rightLabel="Optimized Search Syntax"
-                    />
-                  </div>
-                </Card>
+                    <div className="pt-2 border-t">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
+                        Original vs. Optimized Comparison
+                      </span>
+                      <ComparisonPanel
+                        original={searchQuery}
+                        optimized={searchResult.optimizedQuery}
+                        leftLabel="Original Search Query"
+                        rightLabel="Optimized Search Syntax"
+                      />
+                    </div>
+
+                    {/* Feedback-Based Query Refinement */}
+                    <div className="pt-2 border-t space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Feedback-Based Query Refinement
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-mono uppercase">
+                          Refine Step
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Steer query reformulation and entity filtering with iterative feedback directives.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          "Enforce Boolean AND operators",
+                          "Filter commercial intent",
+                          "Add technical synonym expansions",
+                          "Constrain to exact phrase matching",
+                        ].map((directive) => (
+                          <Button
+                            key={directive}
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[11px] rounded-full px-2.5 bg-background hover:bg-primary/10"
+                            onClick={() => {
+                              setSearchQuery((prev) => `${prev.trim()} [directive: ${directive}]`);
+                              toast.success(`Applied feedback directive: "${directive}"`);
+                            }}
+                          >
+                            <Sparkles className="mr-1 h-2.5 w-2.5 text-primary" />
+                            {directive}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
               )}
             </div>
           </div>
@@ -509,7 +546,7 @@ export function QueryLabPage() {
                   min={1}
                   max={20}
                   step={1}
-                  onValueChange={([v]) => setTopK(v)}
+                  onValueChange={([v]) => v !== undefined && setTopK(v)}
                 />
               </div>
 
@@ -523,7 +560,7 @@ export function QueryLabPage() {
                   min={0.1}
                   max={0.95}
                   step={0.05}
-                  onValueChange={([v]) => setThreshold(v)}
+                  onValueChange={([v]) => v !== undefined && setThreshold(v)}
                 />
               </div>
 

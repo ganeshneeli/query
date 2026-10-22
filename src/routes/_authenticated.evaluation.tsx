@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowDownRight,
@@ -18,6 +18,7 @@ import {
   Info,
   Layers,
   Play,
+  RefreshCw,
   RotateCcw,
   Save,
   Scale,
@@ -68,8 +69,8 @@ import type { EvaluationMetric, ScoreSource } from "@/lib/api/types";
 import { downloadFile, fmtDate, fmtMs, fmtNum, fmtUsd, toCsv } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/evaluation")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    id: typeof search.id === "string" ? search.id : undefined,
+  validateSearch: (search: Record<string, unknown>): { id?: string | undefined } => ({
+    id: typeof search["id"] === "string" ? search["id"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -317,7 +318,7 @@ function EvaluationStudioPage() {
               min={50}
               max={95}
               step={5}
-              onValueChange={([v]) => setMinQuality(v)}
+              onValueChange={([v]) => v !== undefined && setMinQuality(v)}
               className="pt-2"
             />
           </div>
@@ -604,6 +605,25 @@ function EvaluationStudioPage() {
                   <p className="text-muted-foreground leading-relaxed">
                     {evalData.responses.feedback}
                   </p>
+                </div>
+
+                {/* Feedback-Based Refinement Loop */}
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-primary/5 border-primary/20 p-3 text-xs">
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <RefreshCw className="h-3.5 w-3.5 text-primary" />
+                      Feedback-Based Refinement Loop:
+                    </span>
+                    <p className="text-muted-foreground text-[11px]">
+                      Trigger iterative refinement in Prompt Lab using evaluator feedback and rubric score deltas.
+                    </p>
+                  </div>
+                  <Button size="sm" asChild className="h-7 text-xs">
+                    <Link to="/prompt-lab">
+                      <Sparkles className="mr-1 h-3 w-3" />
+                      Refine in Prompt Lab →
+                    </Link>
+                  </Button>
                 </div>
               </TabsContent>
 

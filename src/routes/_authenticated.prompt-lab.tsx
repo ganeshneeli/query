@@ -14,11 +14,15 @@ import {
   History,
   Layers,
   Lightbulb,
+  MessageSquarePlus,
   Play,
+  RefreshCw,
   RotateCcw,
   Save,
   Sliders,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
   Zap,
 } from "lucide-react";
@@ -165,6 +169,11 @@ export function PromptLabPage() {
     optimizedMs: number;
   } | null>(null);
 
+  // Feedback-based refinement state
+  const [feedbackRating, setFeedbackRating] = useState<"up" | "down" | null>(null);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
+
   const tokens = estimateTokens(prompt + context + constraints);
 
   const handleExampleSelect = (ex: (typeof CURATED_EXAMPLES)[number]) => {
@@ -246,9 +255,9 @@ export function PromptLabPage() {
       const req: OptimizePromptRequest = {
         prompt,
         taskType,
-        context: context.trim() || undefined,
-        constraints: constraints.trim() || undefined,
-        outputFormat: outputFormat.trim() || undefined,
+        ...(context.trim() ? { context: context.trim() } : {}),
+        ...(constraints.trim() ? { constraints: constraints.trim() } : {}),
+        ...(outputFormat.trim() && outputFormat !== "none" ? { outputFormat: outputFormat.trim() } : {}),
         model,
         strategy,
         maxIterations,
@@ -340,6 +349,52 @@ The request was processed using standard system defaults. The model produced a g
     }
   };
 
+  const handleFeedbackRefine = async (directive?: string) => {
+    const refinementDirective = directive || feedbackText.trim();
+    if (!result || !refinementDirective) {
+      toast.error("Please enter refinement instructions or select a directive");
+      return;
+    }
+    setIsRefining(true);
+    try {
+      await new Promise((r) => setTimeout(r, 600));
+      const appendedConstraint = `- Refinement Directive: ${refinementDirective}`;
+      const newConstraints = constraints ? `${constraints}\n${appendedConstraint}` : appendedConstraint;
+      setConstraints(newConstraints);
+
+      const refinedReq: OptimizePromptRequest = {
+        prompt,
+        taskType,
+        ...(context.trim() ? { context: context.trim() } : {}),
+        constraints: newConstraints,
+        ...(outputFormat.trim() && outputFormat !== "none" ? { outputFormat: outputFormat.trim() } : {}),
+        model,
+        strategy,
+        maxIterations: Math.min(maxIterations + 1, 5),
+        outputLength,
+        temperature,
+      };
+
+      const refinedRes = await api.optimizePrompt(refinedReq);
+      setResult(refinedRes);
+
+      const versionLabel = `v${versions.length + 1} (Refined: ${refinementDirective.slice(0, 22)})`;
+      const newVer: Version = {
+        id: `v-${Date.now()}`,
+        label: versionLabel,
+        text: refinedRes.optimizedPrompt,
+        createdAt: new Date().toISOString(),
+      };
+      setVersions((prev) => [newVer, ...prev]);
+      setFeedbackText("");
+      toast.success(`Feedback applied! Refined prompt saved as ${versionLabel}`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Refinement failed");
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -424,7 +479,7 @@ The request was processed using standard system defaults. The model produced a g
               min={1}
               max={5}
               step={1}
-              onValueChange={([v]) => setMaxIterations(v)}
+              onValueChange={([v]) => v !== undefined && setMaxIterations(v)}
               className="pt-2"
             />
           </div>
@@ -461,12 +516,35 @@ The request was processed using standard system defaults. The model produced a g
               max={1}
               step={0.1}
               disabled={!supportsTemperature(model)}
-              onValueChange={([v]) => setTemperature(v)}
+              onValueChange={([v]) => v !== undefined && setTemperature(v)}
               className="pt-2"
             />
           </div>
         </div>
       </Card>
+
+      {/* Integrated AI Optimization Framework Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs">
+        <div className="flex items-center gap-2">
+          <Badge className="bg-primary text-primary-foreground text-[10px]">Framework</Badge>
+          <span className="font-medium text-foreground">
+            Integrated AI Optimization & Refinement Workflow
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span className={`flex items-center gap-1 font-semibold ${!result ? "text-primary" : "text-emerald-600 dark:text-emerald-400"}`}>
+            1. Prompt Optimization
+          </span>
+          <span>→</span>
+          <span className={`flex items-center gap-1 font-semibold ${result ? "text-primary" : ""}`}>
+            2. Response Evaluation
+          </span>
+          <span>→</span>
+          <span className={`flex items-center gap-1 font-semibold ${result ? "text-primary" : ""}`}>
+            3. Feedback-Based Refinement
+          </span>
+        </div>
+      </div>
 
       {/* Main Two-Column Layout */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -483,7 +561,10 @@ The request was processed using standard system defaults. The model produced a g
 
               {/* Template / Example Dropdown */}
               <div className="flex items-center gap-1.5">
-                <Select onValueChange={(idx) => handleExampleSelect(CURATED_EXAMPLES[+idx])}>
+                <Select onValueChange={(idx) => {
+                  const ex = CURATED_EXAMPLES[+idx];
+                  if (ex) handleExampleSelect(ex);
+                }}>
                   <SelectTrigger className="h-7 w-36 text-xs">
                     <SelectValue placeholder="Load Example..." />
                   </SelectTrigger>
@@ -890,6 +971,93 @@ The request was processed using standard system defaults. The model produced a g
                   </div>
                 </Card>
               )}
+
+              {/* Feedback-Based Refinement Section (Integrated Workflow) */}
+              <Card className="p-4 shadow-none space-y-3 border-primary/20 bg-primary/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquarePlus className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">Feedback-Based Refinement</span>
+                    <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                      Single Workflow Stage
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant={feedbackRating === "up" ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => {
+                        setFeedbackRating("up");
+                        toast.success("Rated generation as high quality");
+                      }}
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant={feedbackRating === "down" ? "destructive" : "outline"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => {
+                        setFeedbackRating("down");
+                        toast.info("Marked generation for iterative refinement");
+                      }}
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Refine the prompt using qualitative feedback or targeted algorithmic directives to improve relevance, accuracy, and token efficiency.
+                </p>
+
+                {/* Quick Directive Chips */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    "Make more concise (-tokens)",
+                    "Enforce strict schema / JSON",
+                    "Add step-by-step reasoning (CoT)",
+                    "Increase specificity & reduce ambiguity",
+                    "Ensure consistent factual accuracy",
+                  ].map((chip) => (
+                    <Button
+                      key={chip}
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[11px] rounded-full px-2.5 bg-background hover:bg-primary/10"
+                      disabled={isRefining}
+                      onClick={() => handleFeedbackRefine(chip)}
+                    >
+                      <Sparkles className="mr-1 h-2.5 w-2.5 text-primary" />
+                      {chip}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Input
+                    placeholder="Type custom refinement instruction (e.g. 'Limit answer to 3 bullet points')..."
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    className="h-8 text-xs bg-background"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && feedbackText.trim()) {
+                        handleFeedbackRefine();
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs shrink-0"
+                    disabled={isRefining || !feedbackText.trim()}
+                    onClick={() => handleFeedbackRefine()}
+                  >
+                    <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRefining ? "animate-spin" : ""}`} />
+                    {isRefining ? "Refining..." : "Apply & Refine"}
+                  </Button>
+                </div>
+              </Card>
             </>
           )}
         </div>

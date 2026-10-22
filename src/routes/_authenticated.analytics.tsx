@@ -224,7 +224,7 @@ export function AnalyticsPage() {
       .slice(0, 30)
       .map((e) => ({
         name: e.id,
-        cost: +(e.costUsd * 100).toFixed(1), // cents
+        cost: +((e.costUsd ?? 0) * 100).toFixed(1), // cents
         quality: e.optimizedScore,
         z: 200,
       }));

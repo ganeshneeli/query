@@ -453,7 +453,7 @@ export function SettingsPage() {
                   min={1}
                   max={5}
                   step={1}
-                  onValueChange={([v]) => setMaxIterations(v)}
+                  onValueChange={([v]) => v !== undefined && setMaxIterations(v)}
                 />
               </div>
 
@@ -467,7 +467,7 @@ export function SettingsPage() {
                   min={50}
                   max={95}
                   step={5}
-                  onValueChange={([v]) => setQualityThreshold(v)}
+                  onValueChange={([v]) => v !== undefined && setQualityThreshold(v)}
                 />
               </div>
 
@@ -481,7 +481,7 @@ export function SettingsPage() {
                   min={70}
                   max={99}
                   step={1}
-                  onValueChange={([v]) => setSemanticThreshold(v)}
+                  onValueChange={([v]) => v !== undefined && setSemanticThreshold(v)}
                 />
                 <span className="text-[11px] text-muted-foreground block">
                   Embedding similarity floor to prevent prompt drift.
@@ -504,7 +504,7 @@ export function SettingsPage() {
                   min={0}
                   max={100}
                   step={10}
-                  onValueChange={([v]) => setLatencyWeight(v)}
+                  onValueChange={([v]) => v !== undefined && setLatencyWeight(v)}
                 />
               </div>
             </div>

@@ -16,11 +16,14 @@ import {
   Key,
   Layers,
   Lightbulb,
+  Play,
+  RefreshCw,
   Search,
   Server,
   ShieldCheck,
   Sparkles,
   Terminal,
+  TrendingUp,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -101,16 +104,15 @@ export function HelpPage() {
         {/* TAB 1: GETTING STARTED                                          */}
         {/* ============================================================== */}
         <TabsContent value="start" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="p-5 shadow-none space-y-3 border-primary/20">
               <div className="rounded-full bg-primary/10 text-primary p-2 w-fit">
                 <Sparkles className="h-5 w-5" />
               </div>
               <h3 className="font-semibold text-base">1. Optimize Prompts</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Paste your instructions into Prompt Lab. PromptIQ identifies ambiguous wording,
-                injects positive and negative constraints, and compresses tokens without losing
-                intent.
+                Paste instructions into Prompt Lab. PromptIQ identifies ambiguous wording,
+                injects constraints, and compresses tokens without losing intent.
               </p>
               <Button variant="outline" size="sm" asChild className="w-full text-xs">
                 <Link to="/prompt-lab">Open Prompt Lab →</Link>
@@ -123,8 +125,8 @@ export function HelpPage() {
               </div>
               <h3 className="font-semibold text-base">2. Optimize Queries</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Transform lexical search strings with synonym expansions, tune RAG vector top-k
-                retrieval thresholds, and generate PostgreSQL/MySQL covering index recommendations.
+                Transform lexical search queries, tune RAG vector Top-K thresholds, and
+                generate SQL covering index recommendations safely.
               </p>
               <Button variant="outline" size="sm" asChild className="w-full text-xs">
                 <Link to="/query-lab">Open Query Lab →</Link>
@@ -137,14 +139,69 @@ export function HelpPage() {
               </div>
               <h3 className="font-semibold text-base">3. Benchmark & Evaluate</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Run side-by-side evaluations in Evaluation Studio. Compare relevance, groundedness,
-                correctness, and latency across baseline vs optimized generations.
+                Run side-by-side evaluations across 7 quality dimensions: relevance, groundedness,
+                correctness, instruction following, and latency.
               </p>
               <Button variant="outline" size="sm" asChild className="w-full text-xs">
                 <Link to="/evaluation">Open Studio →</Link>
               </Button>
             </Card>
+
+            <Card className="p-5 shadow-none space-y-3 border-indigo-500/20">
+              <div className="rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 p-2 w-fit">
+                <RefreshCw className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold text-base">4. Feedback Refinement</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Close the loop with qualitative ratings and targeted directives. Iteratively refine
+                prompts and queries until strict benchmarks are satisfied.
+              </p>
+              <Button variant="outline" size="sm" asChild className="w-full text-xs">
+                <Link to="/prompt-lab">Refine Prompts →</Link>
+              </Button>
+            </Card>
           </div>
+
+          {/* Project Framework & Objectives Overview */}
+          <Card className="p-6 shadow-none space-y-4 border-primary/20 bg-primary/5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+              <div>
+                <h3 className="text-base font-semibold">Innovation & Novelty</h3>
+                <p className="text-xs text-muted-foreground">
+                  An integrated AI-driven framework combining prompt optimization, query reformulation, response evaluation, and feedback-based refinement in a single workflow.
+                </p>
+              </div>
+              <Badge className="bg-primary text-primary-foreground text-xs">Capstone Specification</Badge>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 text-xs">
+              <div className="space-y-1.5 rounded-lg border bg-background p-3.5">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                  Core Project Objectives:
+                </span>
+                <ol className="list-decimal pl-4 space-y-1 text-muted-foreground leading-relaxed">
+                  <li><strong>Automatically optimize user prompts and queries</strong> before execution.</li>
+                  <li><strong>Improve LLM response relevance, accuracy, and consistency</strong> across tasks.</li>
+                  <li><strong>Reduce unnecessary token usage and response latency</strong> for sustainable compute.</li>
+                  <li><strong>Measure improvement using quality and performance metrics</strong> in a unified dashboard.</li>
+                </ol>
+              </div>
+
+              <div className="space-y-1.5 rounded-lg border bg-background p-3.5">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+                  Expected Outcomes:
+                </span>
+                <ul className="list-disc pl-4 space-y-1 text-muted-foreground leading-relaxed">
+                  <li><strong>Improved response quality and retrieval relevance</strong> via automated restructuring.</li>
+                  <li><strong>Reduced token usage and latency</strong> through pre-flight filler removal and indexing.</li>
+                  <li><strong>Consistent LLM outputs</strong> enforced through explicit schema constraints.</li>
+                  <li><strong>Measurable performance improvement</strong> over baseline prompts and queries.</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
 
           <Card className="p-6 shadow-none space-y-4">
             <h3 className="text-base font-semibold">PromptIQ Architectural Framework</h3>

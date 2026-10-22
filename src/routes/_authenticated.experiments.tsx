@@ -72,9 +72,12 @@ import type { CreateExperimentInput, Experiment, Strategy, TaskType } from "@/li
 import { fmtDate, fmtMs, fmtNum, fmtUsd, TASK_LABEL } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/experiments")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    new: search.new === true || search.new === "true",
-    id: typeof search.id === "string" ? search.id : undefined,
+  validateSearch: (search: Record<string, unknown>): {
+    new?: boolean | undefined;
+    id?: string | undefined;
+  } => ({
+    new: search["new"] === true || search["new"] === "true" ? true : undefined,
+    id: typeof search["id"] === "string" ? search["id"] : undefined,
   }),
   head: () => ({
     meta: [

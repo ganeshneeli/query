@@ -254,6 +254,74 @@ function DashboardPage() {
         }
       />
 
+      {/* Project Mission, Objectives & Innovation Framework */}
+      <Card className="p-4 shadow-none border-primary/20 bg-gradient-to-r from-primary/5 via-background to-accent/5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5">
+          <div className="flex items-center gap-2">
+            <Badge className="bg-primary text-primary-foreground text-xs font-semibold">
+              Innovation / Novelty
+            </Badge>
+            <span className="text-xs sm:text-sm font-semibold text-foreground">
+              Integrated AI-Driven Optimization, Evaluation & Refinement Framework
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+              <Link to="/prompt-lab">
+                <Sparkles className="mr-1 h-3 w-3 text-primary" />
+                Prompt Lab
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+              <Link to="/query-lab">
+                <Gauge className="mr-1 h-3 w-3 text-teal-600" />
+                Query Lab
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+              <Link to="/evaluation">
+                <FileText className="mr-1 h-3 w-3 text-indigo-600" />
+                Evaluation Studio
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 text-xs">
+          <div className="space-y-1">
+            <span className="font-semibold text-foreground flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-primary" />
+              Core Objectives:
+            </span>
+            <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground text-[11px] leading-relaxed">
+              <li>Automatically optimize user prompts and queries.</li>
+              <li>Improve LLM response relevance, accuracy, and consistency.</li>
+              <li>Reduce unnecessary token usage and response latency.</li>
+              <li>Measure improvement using quality and performance metrics.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <span className="font-semibold text-foreground flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+              Expected Outcomes:
+            </span>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Improved response quality and retrieval relevance, reduced token usage and latency, consistent LLM outputs, and measurable performance improvement over original prompts and queries.
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <Badge variant="secondary" className="text-[10px] font-mono">1. Prompt Optimization</Badge>
+              <span className="text-muted-foreground text-[10px]">➔</span>
+              <Badge variant="secondary" className="text-[10px] font-mono">2. Query Reformulation</Badge>
+              <span className="text-muted-foreground text-[10px]">➔</span>
+              <Badge variant="secondary" className="text-[10px] font-mono">3. Response Evaluation</Badge>
+              <span className="text-muted-foreground text-[10px]">➔</span>
+              <Badge variant="secondary" className="text-[10px] font-mono">4. Feedback Refinement</Badge>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Demo Notice Banner */}
       {mode === "demo" && (
         <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-200">
