@@ -21,7 +21,7 @@ export function getStoredGroqKey(): string {
     if (fromStorage?.trim()) return fromStorage.trim();
   }
 
-  // Vite client-side environment variable
+  // Vite client-side environment variable (injected from .env)
   try {
     if (typeof import.meta !== "undefined" && import.meta.env) {
       const viteKey = import.meta.env["VITE_GROQ_API_KEY"];
@@ -99,11 +99,16 @@ function cleanPromptCowboyOutput(raw: string): string {
   return cleaned;
 }
 
-export async function expandWithGroq(
+export interface GroqExpansionResponse {
+  prompt: string;
+  model: string;
+}
+
+export async function expandWithGroqDetailed(
   prompt: string,
   apiKey?: string,
   preferredModel = DEFAULT_GROQ_MODEL,
-): Promise<string> {
+): Promise<GroqExpansionResponse> {
   const key = apiKey?.trim() || getStoredGroqKey();
   if (!key) {
     throw new Error(
@@ -127,7 +132,7 @@ export async function expandWithGroq(
         },
         body: JSON.stringify({
           model,
-          temperature: 0.3,
+          temperature: 0.4,
           max_tokens: 1500,
           messages: [
             {
@@ -147,7 +152,12 @@ export async function expandWithGroq(
           choices?: { message?: { content?: string } }[];
         };
         const expanded = data.choices?.[0]?.message?.content?.trim();
-        if (expanded) return cleanPromptCowboyOutput(expanded);
+        if (expanded) {
+          return {
+            prompt: cleanPromptCowboyOutput(expanded),
+            model,
+          };
+        }
       }
 
       let errorDetail = res.statusText;
@@ -181,6 +191,15 @@ export async function expandWithGroq(
   }
 
   throw new Error(`Groq API error: None of the candidate models were available. (${lastError})`);
+}
+
+export async function expandWithGroq(
+  prompt: string,
+  apiKey?: string,
+  preferredModel = DEFAULT_GROQ_MODEL,
+): Promise<string> {
+  const res = await expandWithGroqDetailed(prompt, apiKey, preferredModel);
+  return res.prompt;
 }
 
 export async function testGroqConnection(

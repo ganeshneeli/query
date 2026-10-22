@@ -64,6 +64,7 @@ import { useApi } from "@/lib/api";
 import { addDemoHistory } from "@/lib/api/demo";
 import {
   expandWithGroq,
+  expandWithGroqDetailed,
   getStoredGroqKey,
   setStoredGroqKey,
   testGroqConnection,
@@ -300,13 +301,18 @@ export function PromptLabPage() {
       const key = activeGroqKey.trim() || getStoredGroqKey();
       let masterPrompt = "";
       let sourceUsed = "";
+      let modelUsed = DEFAULT_GROQ_MODEL;
 
       if (key) {
         try {
-          masterPrompt = await expandWithGroq(prompt, key, DEFAULT_GROQ_MODEL);
-          sourceUsed = "Groq LPU Engine";
+          const groqRes = await expandWithGroqDetailed(prompt, key, DEFAULT_GROQ_MODEL);
+          masterPrompt = groqRes.prompt;
+          modelUsed = groqRes.model;
+          sourceUsed = `Groq LLM (${groqRes.model})`;
         } catch (groqErr) {
           console.warn("Groq API error, falling back to offline engine:", groqErr);
+          const errMsg = groqErr instanceof Error ? groqErr.message : "Network error";
+          toast.warning(`Groq offline (${errMsg}). Using built-in engine.`);
           masterPrompt = expandPromptCowboyOffline(prompt, taskType);
           sourceUsed = "Built-in Engine";
         }
@@ -353,7 +359,7 @@ export function PromptLabPage() {
         source: key && sourceUsed.includes("Groq") ? "groq" : "heuristic",
         explanation: {
           whatChanged: [
-            `Transformed prompt into production-grade master prompt (${sourceUsed})`,
+            `Synthesized master prompt via ${sourceUsed}`,
             masterPrompt.includes("I'm writing a prompt for another AI")
               ? "Framed as explicit AI-to-AI prompt instructions so the target AI delivers instructions rather than premature answers"
               : "Assigned authoritative expert persona with domain-specific architecture authority",
@@ -394,13 +400,13 @@ export function PromptLabPage() {
           title: `Optimization: ${prompt.slice(0, 30)}...`,
           input: prompt,
           output: masterPrompt,
-          model: key && sourceUsed.includes("Groq") ? DEFAULT_GROQ_MODEL : model,
+          model: key && sourceUsed.includes("Groq") ? modelUsed : model,
           success: true,
         });
       }
 
       if (key && sourceUsed.includes("Groq")) {
-        toast.success(`Prompt optimized with Groq in ${elapsedMs}ms!`);
+        toast.success(`Synthesized via Groq LLM (${modelUsed}) in ${elapsedMs}ms!`);
       } else {
         toast.success(`Prompt successfully optimized in ${elapsedMs}ms!`);
       }
@@ -838,11 +844,11 @@ Strictly adhered to rubric requirements, providing maximum informational density
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 text-[11px] px-2 border-amber-500/30 bg-background/50 hover:bg-amber-500/20"
+                  className="h-6 text-[11px] px-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 font-medium"
                   onClick={() => setGroqKeyModalOpen(true)}
                 >
-                  <Key className="mr-1 h-3 w-3 text-amber-500" />
-                  {activeGroqKey.trim() ? "⚡ Groq Connected" : "⚡ Groq Key (Offline Mode)"}
+                  <Sparkles className="mr-1 h-3 w-3 text-emerald-500" />
+                  {activeGroqKey.trim() ? "⚡ Groq LLM Connected" : "⚡ Groq LLM (Workspace Key Active)"}
                 </Button>
               </div>
             </div>
@@ -1050,14 +1056,16 @@ Strictly adhered to rubric requirements, providing maximum informational density
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold">
-                      {result.optimizedPrompt.includes("You are a senior full-stack engineer") ||
-                      result.optimizedPrompt.includes("production-ready ecommerce") ||
-                      result.source === "groq"
-                        ? "Great Prompt (PromptCowboy)"
-                        : "Optimized Prompt"}
+                      {result.source === "groq"
+                        ? "Great Prompt (Groq LLM Live)"
+                        : "Great Prompt (PromptCowboy)"}
                     </span>
-                    {(result.optimizedPrompt.includes("production-ready ecommerce") ||
-                      result.source === "groq") && (
+                    {result.source === "groq" ? (
+                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 text-[10px] font-medium flex items-center gap-1">
+                        <Sparkles className="h-2.5 w-2.5 text-emerald-500" />
+                        Live LLM Synthesis
+                      </Badge>
+                    ) : (
                       <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-normal">
                         PromptCowboy Mode
                       </Badge>
