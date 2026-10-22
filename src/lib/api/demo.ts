@@ -1,4 +1,9 @@
 import { analyzePrompt, optimizePromptHeuristic } from "@/lib/prompt-heuristics";
+import {
+  analyzeAndOptimizeSearchQuery,
+  runRagPipelineHeuristic,
+  optimizeSqlQueryHeuristic,
+} from "@/lib/query-heuristics";
 import { buildSummary, seedExperiments, seedHistory } from "./demo-data";
 import type {
   ApiService,
@@ -164,106 +169,17 @@ export const demoApi: ApiService = {
     return optimizePromptHeuristic(req);
   },
   async optimizeQuery(req): Promise<OptimizeQueryResponse> {
-    await wait(700);
-    if (req.kind === "sql") return { kind: "sql", source: "heuristic", result: sqlDemo(req.query) };
-    const words = req.query.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-    const stop = new Set([
-      "the",
-      "a",
-      "an",
-      "for",
-      "of",
-      "to",
-      "in",
-      "is",
-      "what",
-      "how",
-      "our",
-      "and",
-      "on",
-      "with",
-      "are",
-      "do",
-      "i",
-      "my",
-    ]);
-    const keywords = [...new Set(words.filter((w) => !stop.has(w) && w.length > 2))];
-    if (req.kind === "search") {
-      const SYN: Record<string, string[]> = {
-        cheap: ["budget", "affordable"],
-        good: ["recommended", "top-rated"],
-        fast: ["quick", "high-performance"],
-        laptop: ["notebook"],
-        buy: ["purchase"],
-        fix: ["resolve", "troubleshoot"],
-        error: ["exception", "failure"],
-      };
-      const synonyms = keywords
-        .filter((k) => SYN[k])
-        .map((k) => ({ term: k, alternatives: SYN[k] ?? [] }));
-      const intent = /\b(buy|price|cheap|best)\b/i.test(req.query)
-        ? "Transactional"
-        : /\b(how|why|what|fix)\b/i.test(req.query)
-          ? "Informational"
-          : "Navigational";
-      const entities = (req.query.match(/\b[A-Z][a-zA-Z0-9]+\b/g) ?? []).map((t) => ({
-        text: t,
-        type: "Proper noun",
-      }));
-      return {
-        kind: "search",
-        source: "heuristic",
-        result: {
-          intent,
-          keywords,
-          synonyms,
-          entities,
-          expansions: synonyms
-            .flatMap((s) =>
-              s.alternatives.map((a) => req.query.replace(new RegExp(s.term, "i"), a)),
-            )
-            .slice(0, 4),
-          optimizedQuery: keywords
-            .map((k) => (SYN[k] ? `(${[k, ...(SYN[k] ?? [])].join(" OR ")})` : k))
-            .join(" "),
-        },
-      };
+    await wait(600);
+    if (req.kind === "sql") {
+      const sqlRes = optimizeSqlQueryHeuristic(req.query, req.dialect, req.schema);
+      return { kind: "sql", source: "heuristic", result: sqlRes };
     }
-    const docs = [
-      "Refund policy",
-      "Billing FAQ",
-      "Subscription terms",
-      "Account cancellation",
-      "Pricing overview",
-      "Enterprise agreement",
-      "Support SLA",
-      "Data retention",
-    ]
-      .map((t, i) => ({
-        id: `doc-${i + 1}`,
-        title: t,
-        score: +(0.92 - i * 0.07 - Math.random() * 0.03).toFixed(3),
-        snippet: `Demo snippet from "${t}" mentioning ${keywords.slice(0, 3).join(", ") || "the query"}. This text is simulated.`,
-        source: `${req.collection ?? "collection"}/${t.toLowerCase().replace(/\s/g, "-")}.md`,
-        updatedAt: "2026-09-12",
-      }))
-      .filter((d) => d.score >= (req.threshold ?? 0))
-      .slice(0, req.topK ?? 5);
-    return {
-      kind: "rag",
-      source: "heuristic",
-      result: {
-        rewrittenQuery: req.rewrite ? keywords.join(" ") : null,
-        documents: docs,
-        metrics: {
-          precisionAtK: docs.length ? +(Math.min(0.95, 0.76 + docs.length * 0.04)).toFixed(2) : 0,
-          coverage: docs.length ? +(Math.min(0.98, 0.82 + docs.length * 0.03)).toFixed(2) : 0,
-          meanScore: docs.length
-            ? +(docs.reduce((s, d) => s + d.score, 0) / docs.length).toFixed(3)
-            : 0,
-        },
-      },
-    };
+    if (req.kind === "search") {
+      const searchRes = analyzeAndOptimizeSearchQuery(req.query);
+      return { kind: "search", source: "heuristic", result: searchRes };
+    }
+    const ragRes = runRagPipelineHeuristic(req);
+    return { kind: "rag", source: "heuristic", result: ragRes };
   },
   async createExperiment(input) {
     await wait();

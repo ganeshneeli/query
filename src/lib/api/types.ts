@@ -132,6 +132,11 @@ export interface SearchQueryResult {
   synonyms: { term: string; alternatives: string[] }[];
   entities: { text: string; type: string }[];
   optimizedQuery: string;
+  booleanQuery?: string;
+  luceneQuery?: string;
+  webQuery?: string;
+  semanticQuery?: string;
+  explanation?: string;
 }
 
 export interface RagDocument {
@@ -147,6 +152,7 @@ export interface RagResult {
   rewrittenQuery: string | null;
   documents: RagDocument[];
   metrics: { precisionAtK: number | null; meanScore: number; coverage: number | null };
+  answerSummary?: string;
 }
 
 export interface SqlResult {

@@ -56,6 +56,10 @@ import type {
   SearchQueryResult,
   SqlResult,
 } from "@/lib/api/types";
+import {
+  analyzeAndOptimizeSearchQuery,
+  type SearchOptimizationDirectives,
+} from "@/lib/query-heuristics";
 import { copyText, fmtDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/query-lab")({
@@ -86,33 +90,72 @@ export function QueryLabPage() {
   const [searchQuery, setSearchQuery] = useState(
     "cheap laptops good for coding and machine learning",
   );
+  const [syntaxFormat, setSyntaxFormat] = useState<"boolean" | "lucene" | "web" | "semantic">("boolean");
   const [isOptimizingSearch, setIsOptimizingSearch] = useState(false);
   const [searchResult, setSearchResult] = useState<SearchQueryResult | null>(null);
 
-  const handleOptimizeSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleOptimizeSearch = (
+    overrideQuery?: string,
+    overrideFormat?: "boolean" | "lucene" | "web" | "semantic",
+    directives?: SearchOptimizationDirectives,
+  ) => {
+    const q = overrideQuery ?? searchQuery;
+    if (!q.trim()) return;
     setIsOptimizingSearch(true);
+    const fmt = overrideFormat ?? syntaxFormat;
+
     try {
-      const res = await api.optimizeQuery({ kind: "search", query: searchQuery });
-      if (res.kind === "search") {
-        setSearchResult(res.result);
-        if (mode === "demo") {
-          addDemoHistory({
-            kind: "search",
-            title: `Search Query: ${searchQuery.slice(0, 30)}...`,
-            input: searchQuery,
-            output: res.result.optimizedQuery,
-            model: "Search Optimizer (Lexical + Expansion)",
-            success: true,
-          });
-        }
-        toast.success("Search query optimized");
+      // Deterministic, high-intelligence NLP query decomposition & multi-engine optimization
+      const res = analyzeAndOptimizeSearchQuery(q, fmt, directives);
+      setSearchResult(res);
+
+      if (mode === "demo") {
+        addDemoHistory({
+          kind: "search",
+          title: `Search Query: ${q.slice(0, 30)}...`,
+          input: q,
+          output: res.optimizedQuery,
+          model: "Search Optimizer (Lexical + Semantic Expansion)",
+          success: true,
+        });
       }
+      toast.success("Search query analyzed and optimized");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Search optimization failed");
     } finally {
       setIsOptimizingSearch(false);
     }
+  };
+
+  const handleSwitchSyntax = (fmt: "boolean" | "lucene" | "web" | "semantic") => {
+    setSyntaxFormat(fmt);
+    if (!searchResult) return;
+    let target = searchResult.booleanQuery || searchResult.optimizedQuery;
+    if (fmt === "lucene" && searchResult.luceneQuery) target = searchResult.luceneQuery;
+    else if (fmt === "web" && searchResult.webQuery) target = searchResult.webQuery;
+    else if (fmt === "semantic" && searchResult.semanticQuery) target = searchResult.semanticQuery;
+    else if (fmt === "boolean" && searchResult.booleanQuery) target = searchResult.booleanQuery;
+
+    setSearchResult({
+      ...searchResult,
+      optimizedQuery: target,
+    });
+  };
+
+  const handleApplyDirective = (directive: string) => {
+    const directives: SearchOptimizationDirectives = {};
+    if (directive === "Enforce Boolean AND operators") {
+      directives.enforceAnd = true;
+      setSyntaxFormat("boolean");
+    } else if (directive === "Filter commercial intent") {
+      directives.filterCommercial = true;
+    } else if (directive === "Add technical synonym expansions") {
+      directives.addSynonyms = true;
+    } else if (directive === "Constrain to exact phrase matching") {
+      directives.exactPhrases = true;
+    }
+    handleOptimizeSearch(searchQuery, syntaxFormat, directives);
+    toast.success(`Applied feedback directive: "${directive}"`);
   };
 
   // ==========================================
@@ -125,8 +168,8 @@ export function QueryLabPage() {
   const [topK, setTopK] = useState(5);
   const [threshold, setThreshold] = useState(0.65);
   const [rewriteEnabled, setRewriteEnabled] = useState(true);
-  const [hybridEnabled, setHybridEnabled] = useState(false);
-  const [rerankEnabled, setRerankEnabled] = useState(false);
+  const [hybridEnabled, setHybridEnabled] = useState(true);
+  const [rerankEnabled, setRerankEnabled] = useState(true);
   const [isRetrieving, setIsRetrieving] = useState(false);
   const [ragResult, setRagResult] = useState<RagResult | null>(null);
 
@@ -210,14 +253,7 @@ export function QueryLabPage() {
         schema: sqlSchema,
       });
       if (res.kind === "sql") {
-        setSqlResult({
-          ...res.result,
-          plan: `EXPLAIN ANALYZE (Simulated Safe Execution Plan):\n-> Index Scan using idx_orders_created_at on orders (cost=0.29..8.45 rows=12 width=32)\n   Index Cond: ((created_at >= '2025-01-01'::timestamp) AND (created_at < '2026-01-01'::timestamp))\n   Filter: ((status)::text = 'completed'::text)\nPlanning Time: 0.124 ms\nExecution Time: 0.421 ms`,
-          estimatedRows: 12,
-          estimatedCost: 8.45,
-          executionMs: { original: 42, optimized: 0.42 },
-          equivalence: "verified",
-        });
+        setSqlResult(res.result);
         if (mode === "demo") {
           addDemoHistory({
             kind: "sql",
@@ -270,14 +306,16 @@ export function QueryLabPage() {
               <Card className="p-4 shadow-none space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">Natural Language Query</span>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 flex-wrap">
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs"
-                      onClick={() =>
-                        setSearchQuery("fix react hydration error server client mismatch")
-                      }
+                      onClick={() => {
+                        const q = "fix react hydration error server client mismatch";
+                        setSearchQuery(q);
+                        handleOptimizeSearch(q);
+                      }}
                     >
                       Sample 1
                     </Button>
@@ -285,11 +323,25 @@ export function QueryLabPage() {
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs"
-                      onClick={() =>
-                        setSearchQuery("how to build multimodal rag pipeline with embeddings")
-                      }
+                      onClick={() => {
+                        const q = "cheap laptops good for coding and machine learning";
+                        setSearchQuery(q);
+                        handleOptimizeSearch(q);
+                      }}
                     >
                       Sample 2
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        const q = "how to build multimodal rag pipeline with embeddings";
+                        setSearchQuery(q);
+                        handleOptimizeSearch(q);
+                      }}
+                    >
+                      Sample 3
                     </Button>
                   </div>
                 </div>
@@ -297,7 +349,7 @@ export function QueryLabPage() {
                 <Textarea
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Enter a natural-language search query..."
+                  placeholder="Enter a natural-language search query (e.g. cheap laptops good for coding and machine learning)..."
                   rows={4}
                   className="font-mono text-xs leading-relaxed"
                 />
@@ -316,7 +368,7 @@ export function QueryLabPage() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={handleOptimizeSearch}
+                    onClick={() => handleOptimizeSearch()}
                     disabled={!searchQuery.trim() || isOptimizingSearch}
                   >
                     {isOptimizingSearch ? (
@@ -337,7 +389,12 @@ export function QueryLabPage() {
               {/* Search Features Breakdown */}
               {searchResult && (
                 <Card className="p-4 shadow-none space-y-4">
-                  <h4 className="text-sm font-semibold">Query Decomposition & Extraction</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Query Decomposition & Extraction</h4>
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      {searchResult.keywords.length} Core Concepts
+                    </Badge>
+                  </div>
 
                   {/* Intent & Entities */}
                   <div className="grid grid-cols-2 gap-3 text-xs">
@@ -351,7 +408,7 @@ export function QueryLabPage() {
                     </div>
 
                     <div className="rounded-lg border p-3 space-y-1 bg-muted/20">
-                      <span className="text-muted-foreground">Named Entities:</span>
+                      <span className="text-muted-foreground">Detected Entities:</span>
                       <div className="flex flex-wrap gap-1 pt-1">
                         {searchResult.entities.length === 0 ? (
                           <span className="text-muted-foreground italic">None detected</span>
@@ -431,77 +488,107 @@ export function QueryLabPage() {
                 />
               ) : (
                 <Card className="p-4 shadow-none space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">Optimized Search Query</span>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => {
-                          copyText(searchResult.optimizedQuery);
-                          toast.success("Copied optimized query");
-                        }}
-                      >
-                        <Copy className="mr-1 h-3 w-3" />
-                        Copy Query
-                      </Button>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">Optimized Search Query</span>
+                      <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-normal">
+                        Lexical & Semantic Engine
+                      </Badge>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        copyText(searchResult.optimizedQuery);
+                        toast.success("Copied optimized query");
+                      }}
+                    >
+                      <Copy className="mr-1 h-3 w-3" />
+                      Copy Query
+                    </Button>
                   </div>
 
-                  <div className="rounded-lg border bg-accent/10 border-primary/20 p-3 font-mono text-xs leading-relaxed text-foreground">
+                  {/* Syntax Format Selector */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/40 border text-xs">
+                    <span className="text-[11px] text-muted-foreground px-2 font-medium">Syntax:</span>
+                    {[
+                      { id: "boolean", label: "Boolean (AND/OR)" },
+                      { id: "lucene", label: "Elasticsearch / Lucene" },
+                      { id: "web", label: "Web Search" },
+                      { id: "semantic", label: "Dense Semantic Vector" },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => handleSwitchSyntax(f.id as any)}
+                        className={`px-2.5 py-1 rounded text-xs transition-colors font-medium ${
+                          syntaxFormat === f.id
+                            ? "bg-background text-foreground shadow-sm border"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="rounded-lg border bg-accent/10 border-primary/20 p-3 font-mono text-xs leading-relaxed text-foreground select-all">
                     {searchResult.optimizedQuery}
                   </div>
 
-                    <div className="pt-2 border-t">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
-                        Original vs. Optimized Comparison
-                      </span>
-                      <ComparisonPanel
-                        original={searchQuery}
-                        optimized={searchResult.optimizedQuery}
-                        leftLabel="Original Search Query"
-                        rightLabel="Optimized Search Syntax"
-                      />
+                  {searchResult.explanation && (
+                    <div className="text-[11px] text-muted-foreground bg-muted/20 p-2.5 rounded border leading-relaxed">
+                      <strong>Optimization Rationale:</strong> {searchResult.explanation}
                     </div>
+                  )}
 
-                    {/* Feedback-Based Query Refinement */}
-                    <div className="pt-2 border-t space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Feedback-Based Query Refinement
-                        </span>
-                        <Badge variant="outline" className="text-[10px] font-mono uppercase">
-                          Refine Step
-                        </Badge>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        Steer query reformulation and entity filtering with iterative feedback directives.
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          "Enforce Boolean AND operators",
-                          "Filter commercial intent",
-                          "Add technical synonym expansions",
-                          "Constrain to exact phrase matching",
-                        ].map((directive) => (
-                          <Button
-                            key={directive}
-                            size="sm"
-                            variant="outline"
-                            className="h-6 text-[11px] rounded-full px-2.5 bg-background hover:bg-primary/10"
-                            onClick={() => {
-                              setSearchQuery((prev) => `${prev.trim()} [directive: ${directive}]`);
-                              toast.success(`Applied feedback directive: "${directive}"`);
-                            }}
-                          >
-                            <Sparkles className="mr-1 h-2.5 w-2.5 text-primary" />
-                            {directive}
-                          </Button>
-                        ))}
-                      </div>
+                  <div className="pt-2 border-t">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
+                      Original vs. Optimized Comparison
+                    </span>
+                    <ComparisonPanel
+                      original={searchQuery}
+                      optimized={searchResult.optimizedQuery}
+                      leftLabel="Original Search Query"
+                      rightLabel="Optimized Search Syntax"
+                    />
+                  </div>
+
+                  {/* Feedback-Based Query Refinement */}
+                  <div className="pt-2 border-t space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Feedback-Based Query Refinement
+                      </span>
+                      <Badge variant="outline" className="text-[10px] font-mono uppercase">
+                        Refine Step
+                      </Badge>
                     </div>
-                  </Card>
+                    <p className="text-[11px] text-muted-foreground">
+                      Steer query reformulation and entity filtering with iterative feedback directives.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        "Enforce Boolean AND operators",
+                        "Filter commercial intent",
+                        "Add technical synonym expansions",
+                        "Constrain to exact phrase matching",
+                      ].map((directive) => (
+                        <Button
+                          key={directive}
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[11px] rounded-full px-2.5 bg-background hover:bg-primary/10"
+                          onClick={() => handleApplyDirective(directive)}
+                        >
+                          <Sparkles className="mr-1 h-2.5 w-2.5 text-primary" />
+                          {directive}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
               )}
             </div>
           </div>
@@ -575,44 +662,22 @@ export function QueryLabPage() {
                   <Switch checked={rewriteEnabled} onCheckedChange={setRewriteEnabled} />
                 </div>
 
-                {/* Hybrid Search (Disabled with tooltip) */}
-                <div className="flex items-center justify-between opacity-60">
+                {/* Hybrid Search */}
+                <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Hybrid Search (Dense + BM25)</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          Disabled: Hybrid search requires a connected Elasticsearch/Vespa backend
-                          instance. Currently in demo mode.
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Backend connection required</p>
+                    <Label className="text-xs">Hybrid Search (Dense + BM25)</Label>
+                    <p className="text-[11px] text-muted-foreground">Reciprocal Rank Fusion (RRF k=60)</p>
                   </div>
-                  <Switch checked={hybridEnabled} disabled onCheckedChange={setHybridEnabled} />
+                  <Switch checked={hybridEnabled} onCheckedChange={setHybridEnabled} />
                 </div>
 
-                {/* Reranking (Disabled with tooltip) */}
-                <div className="flex items-center justify-between opacity-60">
+                {/* Cross-Encoder Reranking */}
+                <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Cross-Encoder Reranking</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          Disabled: Cross-encoder reranking requires a dedicated GPU worker instance
-                          on the backend.
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">GPU worker required</p>
+                    <Label className="text-xs">Cross-Encoder Reranking</Label>
+                    <p className="text-[11px] text-muted-foreground">High-precision two-stage scoring</p>
                   </div>
-                  <Switch checked={rerankEnabled} disabled onCheckedChange={setRerankEnabled} />
+                  <Switch checked={rerankEnabled} onCheckedChange={setRerankEnabled} />
                 </div>
               </div>
             </Card>
@@ -620,7 +685,35 @@ export function QueryLabPage() {
             {/* Query Input & Retrieved Documents */}
             <div className="space-y-4 lg:col-span-2">
               <Card className="p-4 shadow-none space-y-3">
-                <Label className="text-xs font-semibold">User Question / Retrieval Query</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">User Question / Retrieval Query</Label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px]"
+                      onClick={() =>
+                        setRagQuery(
+                          "What is the refund window and process for annual enterprise accounts?",
+                        )
+                      }
+                    >
+                      Support Sample
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px]"
+                      onClick={() => {
+                        setRagCollection("Engineering Wiki");
+                        setRagQuery("How to build multimodal rag pipeline with embeddings");
+                      }}
+                    >
+                      Wiki Sample
+                    </Button>
+                  </div>
+                </div>
+
                 <Textarea
                   value={ragQuery}
                   onChange={(e) => setRagQuery(e.target.value)}
@@ -657,17 +750,27 @@ export function QueryLabPage() {
               {ragResult && (
                 <div className="space-y-4">
                   {/* Quality Metrics */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-2.5">
                     <Card className="p-3 shadow-none text-center">
                       <span className="text-xs text-muted-foreground">Mean Relevance</span>
-                      <p className="text-xl font-semibold text-primary">
+                      <p className="text-lg font-semibold text-primary">
                         {ragResult.metrics.meanScore}
                       </p>
                     </Card>
                     <Card className="p-3 shadow-none text-center">
                       <span className="text-xs text-muted-foreground">Retrieved (Top-K)</span>
-                      <p className="text-xl font-semibold">
+                      <p className="text-lg font-semibold">
                         {ragResult.documents.length} / {topK}
+                      </p>
+                    </Card>
+                    <Card className="p-3 shadow-none text-center">
+                      <span className="text-xs text-muted-foreground">Pipeline Mode</span>
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 pt-1">
+                        {hybridEnabled && rerankEnabled
+                          ? "Hybrid + Rerank"
+                          : hybridEnabled
+                            ? "Dense + BM25"
+                            : "Dense Vector"}
                       </p>
                     </Card>
                     <Card className="p-3 shadow-none text-center">
@@ -677,6 +780,24 @@ export function QueryLabPage() {
                       </p>
                     </Card>
                   </div>
+
+                  {/* Grounded Synthesized Response */}
+                  {ragResult.answerSummary && (
+                    <Card className="p-4 shadow-none border-primary/30 bg-primary/5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Synthesized Grounded Response
+                        </h4>
+                        <Badge variant="outline" className="text-[10px] font-mono">
+                          Grounded Citations
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-foreground leading-relaxed">
+                        {ragResult.answerSummary}
+                      </p>
+                    </Card>
+                  )}
 
                   {/* Documents List */}
                   <Card className="p-4 shadow-none space-y-3">
@@ -701,12 +822,12 @@ export function QueryLabPage() {
                             <Badge
                               variant="outline"
                               className={
-                                doc.score >= 0.8
+                                doc.score >= 0.85
                                   ? "border-emerald-500/50 text-emerald-600 dark:text-emerald-400 font-mono"
                                   : "font-mono"
                               }
                             >
-                              score: {doc.score}
+                              relevance: {doc.score}
                             </Badge>
                           </div>
                           <p className="text-muted-foreground leading-relaxed">{doc.snippet}</p>
@@ -743,7 +864,33 @@ export function QueryLabPage() {
             <div className="space-y-4">
               <Card className="p-4 shadow-none space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-semibold">SQL Code Editor</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">SQL Code Editor</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px]"
+                      onClick={() => {
+                        setSqlCode(
+                          `SELECT *\nFROM orders\nWHERE YEAR(created_at) = 2025\n  AND status = 'completed'\nORDER BY created_at DESC;`,
+                        );
+                      }}
+                    >
+                      Orders Sample
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px]"
+                      onClick={() => {
+                        setSqlCode(
+                          `SELECT *\nFROM users\nWHERE LOWER(email) = LOWER('user@example.com')\n  AND status = 'active';`,
+                        );
+                      }}
+                    >
+                      Users Sample
+                    </Button>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Select value={sqlDialect} onValueChange={setSqlDialect}>
                       <SelectTrigger className="h-7 text-xs w-32">
