@@ -1,0 +1,27 @@
+import {
+  BarChart3,
+  Beaker,
+  Database,
+  FlaskConical,
+  Gauge,
+  History,
+  LayoutDashboard,
+  LifeBuoy,
+  Settings,
+  Sparkles,
+} from "lucide-react";
+
+export const NAV = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Prompt Lab", url: "/prompt-lab", icon: Sparkles },
+  { title: "Query Lab", url: "/query-lab", icon: Database },
+  { title: "Evaluation Studio", url: "/evaluation", icon: Gauge },
+  { title: "Experiments", url: "/experiments", icon: FlaskConical },
+  { title: "History", url: "/history", icon: History },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Settings", url: "/settings", icon: Settings },
+] as const;
+
+export const EXTRA = [{ title: "Help & Docs", url: "/help", icon: LifeBuoy }] as const;
+export const ALL_PAGES = [...NAV, ...EXTRA];
+export const LabIcon = Beaker;
