@@ -353,11 +353,13 @@ export function PromptLabPage() {
         source: key && sourceUsed.includes("Groq") ? "groq" : "heuristic",
         explanation: {
           whatChanged: [
-            `Transformed prompt into comprehensive master blueprint (${sourceUsed})`,
-            "Assigned authoritative expert persona with domain-specific architecture authority",
-            "Defined end-to-end technical scope, operational criteria, and execution guardrails",
-            "Injected negative constraints and boundary conditions to prevent AI hallucination",
-            "Structured output format into clean, immediately runnable specifications",
+            `Transformed prompt into production-grade master prompt (${sourceUsed})`,
+            masterPrompt.includes("I'm writing a prompt for another AI")
+              ? "Framed as explicit AI-to-AI prompt instructions so the target AI delivers instructions rather than premature answers"
+              : "Assigned authoritative expert persona with domain-specific architecture authority",
+            "Defined clear domain scope, foundational concepts, and execution guardrails",
+            "Injected factual accuracy requirements and negative constraints to eliminate AI hallucination",
+            "Mandated concrete real-world examples and accessible terminology definitions",
           ],
           why: originalAnalysis.issues.length
             ? originalAnalysis.issues.map((i) => `${i.label}: ${i.detail}`)
@@ -365,7 +367,8 @@ export function PromptLabPage() {
                 "Baseline prompts lack specific personas, technical boundary limits, and execution structure.",
               ],
           benefit: [
-            "Converts brief or casual requests into production-grade master prompts ready to copy and run",
+            "Produces a magnificent, production-grade prompt ready to copy and send directly to ChatGPT, Claude, or Cursor",
+            "Instructs the target AI precisely on role, scope, constraints, and examples without returning raw answers prematurely",
             "Eliminates multiple rounds of clarifying questions and partial AI outputs",
           ],
           tradeoffs: [
@@ -827,7 +830,7 @@ Strictly adhered to rubric requirements, providing maximum informational density
                     PromptCowboy Mode (Lazy ➔ Master Prompt)
                   </span>
                   <p className="text-[11px] text-muted-foreground hidden sm:block">
-                    Turn brief lazy prompts (e.g. <em>"i want build and ecommerce app"</em>) into production-grade master prompts.
+                    Turn brief lazy prompts (e.g. <em>"what is java"</em> or <em>"i want build and ecommerce app"</em>) into production-grade master prompts.
                   </p>
                 </div>
               </div>
@@ -847,7 +850,7 @@ Strictly adhered to rubric requirements, providing maximum informational density
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter your initial prompt or lazy prompt (e.g. 'i want build and ecommerce app')..."
+              placeholder="Enter your initial prompt or lazy prompt (e.g. 'what is java' or 'i want build and ecommerce app')..."
               rows={8}
               className="font-mono text-xs leading-relaxed"
             />

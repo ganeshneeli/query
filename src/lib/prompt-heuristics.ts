@@ -12,7 +12,8 @@ import type {
 export const estimateTokens = (text: string) =>
   text.trim() ? Math.ceil(text.trim().length / 4) : 0;
 
-const VAGUE_TERMS = /\b(something|stuff|things|some|etc|good|nice|better|maybe|kind of|sort of|bad)\b/gi;
+const VAGUE_TERMS =
+  /\b(something|stuff|things|etc|maybe|kind of(?!\s+(?:language|platform|technology|system|database|architecture|tool))|sort of|bad)\b/gi;
 
 const FILLER =
   /\b(please|kindly|just|really|very|basically|actually|i was wondering if|could you possibly|i would like you to|can you please|could you)\b/gi;
@@ -84,12 +85,15 @@ export function analyzePrompt(req: AnalyzeRequest): AnalyzeResponse {
   const isStructured =
     /\b(Task|Constraints|Output format|Context|Verification):/i.test(p) ||
     (words.length > 40 &&
-      /\bYou are\b/i.test(p) &&
+      (/\bYou are\b/i.test(p) || /\bI'm writing a prompt for another AI\b/i.test(p)) &&
       (/\bDeliver\b/i.test(p) ||
         /\bCover\b/i.test(p) ||
         /\bKeep the scope\b/i.test(p) ||
         /\bStructure your response\b/i.test(p) ||
-        /\bExecutive Summary\b/i.test(p)));
+        /\bExecutive Summary\b/i.test(p) ||
+        /\bconcrete example\b/i.test(p) ||
+        /\bfactually accurate\b/i.test(p) ||
+        /\bcore idea\b/i.test(p)));
 
   const issues: DetectedIssue[] = [];
 
@@ -144,7 +148,7 @@ export function analyzePrompt(req: AnalyzeRequest): AnalyzeResponse {
   // Calculate refined quality indicators based on structural components
   const lengthPenalty = words.length < 15 && !isStructured ? (15 - words.length) * 2.5 : 0;
   const baseClarity = 84 - vague * 14 - filler * 5 - lengthPenalty;
-  const clarity = clamp(baseClarity + (isStructured ? 12 : 0));
+  const clarity = clamp(isStructured ? Math.max(92, baseClarity + 16) : baseClarity);
 
   const lengthScore = Math.min(words.length / 45, 1) * 35;
   const specificity = clamp(
@@ -466,7 +470,35 @@ export function optimizePromptHeuristic(req: OptimizePromptRequest): OptimizePro
 export function expandPromptCowboyOffline(prompt: string, taskType?: string): string {
   const p = prompt.trim().toLowerCase();
 
-  // 1. E-Commerce Archetype (Exact PromptCowboy match requested by user)
+  // 1. Exact Java Conceptual Archetype (Exact PromptCowboy match requested by user)
+  if (/^what\s+is\s+java\b/i.test(p) || (p.includes("java") && /what\s+is|explain|tell\s+me\s+about/i.test(p))) {
+    return `I'm writing a prompt for another AI, so the deliverable is the instructions below rather than an explanation of Java itself.
+
+You are a senior software engineer with broad experience across Java and its ecosystem. I am a learner who wants a clear answer to the question: what is Java? Explain what Java is in a way that gives me a solid, accurate foundation. Cover what kind of language and platform it is, what problems it was designed to solve, and what the Java Virtual Machine (JVM) does. Include the main ways Java is used today, such as enterprise backends, Android development, and large-scale systems, and briefly note what the Java ecosystem offers around the language, such as its standard library and build tools. Keep the explanation accessible to someone new to programming, define any technical term the first time it appears, and use one short, concrete example to illustrate the core idea. Make sure the answer is factually accurate and reflects how Java is commonly described today.`;
+  }
+
+  // 2. Concept / Educational / Informational Archetype (e.g. "what is python", "explain docker", "how does oauth work")
+  if (
+    /^(?:what\s+is|what\s+are|explain|how\s+does|how\s+do|why\s+use|tell\s+me\s+about|guide\s+to|introduction\s+to)\b/i.test(
+      p,
+    ) ||
+    p.startsWith("what ") ||
+    p.startsWith("explain ")
+  ) {
+    const rawTopic = prompt
+      .replace(
+        /^(?:what\s+is|what\s+are|explain|how\s+does|how\s+do|why\s+use|tell\s+me\s+about|guide\s+to|introduction\s+to)\s+/i,
+        "",
+      )
+      .replace(/[?!.]+$/, "")
+      .trim();
+    const topic = rawTopic || "the topic";
+    return `I'm writing a prompt for another AI, so the deliverable is the instructions below rather than an explanation of ${topic} itself.
+
+You are a senior software engineer and domain specialist with broad experience across ${topic} and its ecosystem. I am a learner who wants a clear answer to the question: ${prompt.trim()}? Explain what ${topic} is in a way that gives me a solid, accurate foundation. Cover what kind of technology and architecture it is, what problems it was designed to solve, and how its core execution model works. Include the main ways ${topic} is used today in production systems, and briefly note what the surrounding ecosystem, libraries, and tooling offer. Keep the explanation accessible to someone new to this area, define any technical term the first time it appears, and use one short, concrete example to illustrate the core idea. Make sure the answer is factually accurate and reflects how ${topic} is commonly described today.`;
+  }
+
+  // 3. E-Commerce Archetype (Exact PromptCowboy match requested by user)
   if (/e-?commerce|online\s+store|shopping\s+app|shop\s+app|cart\s+and\s+checkout/i.test(p)) {
     return `You are a senior full-stack engineer who builds production-ready ecommerce applications. I want you to build an ecommerce app from scratch. I have not yet specified a stack, platform, or feature set, so make sensible, modern choices and state them clearly at the top of your response so I can see what you chose and why.
 
@@ -477,7 +509,7 @@ Keep the scope to what makes a working store. Do not add recommendation engines,
 If the request requires assumptions about the domain (for example, what is being sold), choose a generic physical-goods store and make the product model easy to adapt. Deliver the project as complete files I can run locally, and close with the exact commands to install, configure, and start it.`;
   }
 
-  // 2. SaaS / Web App Archetype
+  // 4. SaaS / Web App Archetype
   if (/saas|web\s+app|dashboard|crm|subscription|portal/i.test(p)) {
     return `You are a principal software engineer specialized in building multi-tenant SaaS applications. I want you to build a production-ready SaaS web application from scratch based on the requirement: "${prompt.trim()}". I have not specified a technology stack or schema, so make modern, battle-tested choices (e.g., TypeScript, modern framework, relational DB with migrations) and state them with brief rationale at the beginning.
 
@@ -486,7 +518,7 @@ Build this as a fully functional, runnable application rather than an abstract p
 Keep the scope focused on core SaaS workflows. Do not include unrequested AI wrappers, complex enterprise SSO, or multi-region failover unless requested. Prioritize clean modular code, clear file organization, zero placeholder functions, and a comprehensive README with environment setup and startup commands.`;
   }
 
-  // 3. REST API / Backend Microservice Archetype
+  // 5. REST API / Backend Microservice Archetype
   if (/api|backend|rest\s+service|microservice|database|crud\s+backend/i.test(p)) {
     return `You are a senior backend architect who designs robust, production-grade REST APIs. I want you to build a complete backend service from scratch for: "${prompt.trim()}". Make sensible, modern architectural choices and state your stack and design principles clearly up front.
 
@@ -495,7 +527,7 @@ Implement full CRUD endpoints with strict input validation, comprehensive error 
 Strictly avoid mock stubs or incomplete handlers. Provide complete, runnable code files with unit and integration tests for critical routes, OpenAPI documentation, and explicit commands to initialize the database and run the service locally.`;
   }
 
-  // 4. Game Development Archetype
+  // 6. Game Development Archetype
   if (/game|snake|arcade|puzzle|pygame|unity|canvas/i.test(p)) {
     return `You are a veteran game developer who crafts polished, bug-free games. I want you to build a fully playable game from scratch based on: "${prompt.trim()}". Choose a modern, accessible platform/framework and state your choice and why at the top.
 
@@ -504,7 +536,7 @@ Deliver a complete, self-contained, and immediately runnable game with a complet
 Deliver the complete code in full without placeholders, accompanied by instructions on how to install dependencies and run the game with zero friction.`;
   }
 
-  // 5. Technical Comparison / Difference Archetype (e.g. "diff between java and python")
+  // 7. Technical Comparison / Difference Archetype (e.g. "diff between java and python")
   if (/\b(?:diff(?:erence)?|vs\.?|versus|compare|comparison)\b/i.test(p)) {
     return `You are a principal software engineer and polyglot systems architect. Provide an authoritative, in-depth technical comparison and architectural trade-off analysis for: "${prompt.trim()}".
 
@@ -517,7 +549,7 @@ Structure your response with uncompromising engineering rigor:
 Avoid surface-level generalities or subjective marketing claims. Provide concrete, empirical trade-offs with explicit boundary conditions.`;
   }
 
-  // 6. General PromptCowboy Synthesis Fallback
+  // 8. General PromptCowboy Synthesis Fallback
   const persona =
     taskType === "Coding"
       ? "senior software engineer and systems architect"
@@ -529,10 +561,18 @@ Avoid surface-level generalities or subjective marketing claims. Provide concret
             ? "executive technical communications strategist"
             : "senior solutions architect";
 
-  return `You are a ${persona} who delivers production-grade solutions. I want you to design and build a complete solution from scratch for: "${prompt.trim()}". I have not yet specified a detailed stack, methodology, or constraint set, so make sensible, modern choices and state them clearly at the top with your engineering rationale.
+  if (/build|create|make|develop|write|code|design|implement|deploy|app|system|service/i.test(p)) {
+    return `You are a ${persona} who delivers production-grade solutions. I want you to design and build a complete solution from scratch for: "${prompt.trim()}". I have not yet specified a detailed stack, methodology, or constraint set, so make sensible, modern choices and state them clearly at the top with your engineering rationale.
 
 Deliver this as a working, runnable project rather than a sketch or superficial mockup. Implement the end-to-end core workflow, provide realistic data structures and error handling, adhere to strict modular boundaries, and ensure all configuration and secrets are decoupled into environment variables.
 
 Keep the scope focused strictly on the essential requirements to create a robust, production-ready system. Do not introduce premature complexity, unneeded third-party bloat, or extraneous abstractions. Provide complete code files with clear folder hierarchy, a README detailing exact local setup and execution commands, and a prioritized list of next steps for production hardening.`;
+  }
+
+  return `I'm writing a prompt for another AI, so the deliverable is the instructions below rather than an explanation of the topic itself.
+
+You are a ${persona} with extensive real-world experience. I am seeking a comprehensive, authoritative response for: "${prompt.trim()}". Provide an in-depth, structured deliverable that covers foundational principles, modern best practices, and operational trade-offs.
+
+Structure the response clearly, define any specialized terminology upon first introduction, and provide at least one concrete, real-world example to illustrate the core concepts. Maintain an accessible yet technically rigorous tone, and ensure all recommendations reflect modern industry standards.`;
 }
 

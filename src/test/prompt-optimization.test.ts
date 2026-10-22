@@ -103,5 +103,29 @@ Before answering, briefly check your answer against each constraint.`;
     expect(res.optimizedPrompt).toContain("Side-by-Side Code Example");
     expect(res.optimized.indicators.clarity).toBeGreaterThanOrEqual(90);
   });
+
+  it("optimizes conceptual learning prompts like 'what is java' into PromptCowboy educational master prompts", () => {
+    const raw = "what is java";
+    const res = optimizePromptHeuristic({
+      prompt: raw,
+      taskType: "Coding",
+      model: "claude-3.5-sonnet",
+      strategy: "Balanced",
+      maxIterations: 2,
+      outputLength: "medium",
+      temperature: 0.7,
+    });
+
+    expect(res.optimizedPrompt).toContain(
+      "I'm writing a prompt for another AI, so the deliverable is the instructions below rather than an explanation of Java itself.",
+    );
+    expect(res.optimizedPrompt).toContain(
+      "You are a senior software engineer with broad experience across Java and its ecosystem.",
+    );
+    expect(res.optimizedPrompt).toContain("Java Virtual Machine (JVM)");
+    expect(res.optimizedPrompt).toContain("define any technical term the first time it appears");
+    expect(res.optimizedPrompt).toContain("use one short, concrete example to illustrate the core idea");
+    expect(res.optimized.indicators.clarity).toBeGreaterThanOrEqual(90);
+  });
 });
 
