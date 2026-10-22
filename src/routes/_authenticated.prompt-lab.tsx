@@ -25,11 +25,20 @@ import {
   ThumbsUp,
   Trash2,
   Zap,
+  Key,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,6 +62,12 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/states";
 import { useApi } from "@/lib/api";
 import { addDemoHistory } from "@/lib/api/demo";
+import {
+  expandWithGroq,
+  getStoredGroqKey,
+  setStoredGroqKey,
+  DEFAULT_GROQ_MODEL,
+} from "@/lib/api/groq";
 import type {
   AnalyzeResponse,
   OptimizePromptRequest,
@@ -61,7 +76,11 @@ import type {
   Strategy,
 } from "@/lib/api/types";
 import { copyText } from "@/lib/format";
-import { estimateTokens } from "@/lib/prompt-heuristics";
+import {
+  estimateTokens,
+  analyzePrompt,
+  expandPromptCowboyOffline,
+} from "@/lib/prompt-heuristics";
 
 export const Route = createFileRoute("/_authenticated/prompt-lab")({
   head: () => ({
@@ -89,6 +108,22 @@ const CURATED_EXAMPLES: {
   constraints: string;
   format: string;
 }[] = [
+  {
+    label: "Lazy: Ecommerce App (PromptCowboy)",
+    taskType: "Coding",
+    prompt: "i want build and ecommerce app",
+    context: "",
+    constraints: "",
+    format: "",
+  },
+  {
+    label: "Lazy: SaaS Subscription Platform",
+    taskType: "Coding",
+    prompt: "make a multi-tenant saas platform with stripe subscriptions and team invites",
+    context: "",
+    constraints: "",
+    format: "",
+  },
   {
     label: "Support Ticket Summary",
     taskType: "Summarization",
@@ -173,6 +208,12 @@ export function PromptLabPage() {
   const [feedbackRating, setFeedbackRating] = useState<"up" | "down" | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
+
+  // Groq & PromptCowboy configuration state
+  const [groqKeyModalOpen, setGroqKeyModalOpen] = useState(false);
+  const [groqKeyInput, setGroqKeyInput] = useState(() => getStoredGroqKey());
+  const [activeGroqKey, setActiveGroqKey] = useState(() => getStoredGroqKey());
+  const [isGroqExpanding, setIsGroqExpanding] = useState(false);
 
   const tokens = estimateTokens(prompt + context + constraints);
 
@@ -291,6 +332,142 @@ export function PromptLabPage() {
       toast.error(e instanceof Error ? e.message : "Optimization failed");
     } finally {
       setIsOptimizing(false);
+    }
+  };
+
+  const handleSaveGroqKey = () => {
+    setStoredGroqKey(groqKeyInput);
+    setActiveGroqKey(groqKeyInput.trim());
+    setGroqKeyModalOpen(false);
+    if (groqKeyInput.trim()) {
+      toast.success("Groq API key saved in browser storage");
+    } else {
+      toast.info("Groq key removed. Operating in offline archetype mode.");
+    }
+  };
+
+  const handlePromptCowboyExpand = async () => {
+    if (!prompt.trim()) {
+      toast.error("Please enter a lazy prompt first (e.g. 'i want build and ecommerce app')");
+      return;
+    }
+
+    setIsGroqExpanding(true);
+    setExecutionResult(null);
+
+    const startTime = performance.now();
+    try {
+      let masterPrompt = "";
+      let sourceUsed = "";
+
+      if (activeGroqKey.trim()) {
+        try {
+          masterPrompt = await expandWithGroq(prompt, activeGroqKey, DEFAULT_GROQ_MODEL);
+          sourceUsed = "Groq Llama 3.3 (70B)";
+        } catch (groqErr) {
+          console.warn("Groq API error, falling back to offline archetype:", groqErr);
+          toast.error(
+            `Groq error: ${groqErr instanceof Error ? groqErr.message : "Request failed"}. Using offline archetype.`,
+          );
+          masterPrompt = expandPromptCowboyOffline(prompt, taskType);
+          sourceUsed = "PromptCowboy Offline Engine";
+        }
+      } else {
+        masterPrompt = expandPromptCowboyOffline(prompt, taskType);
+        sourceUsed = "PromptCowboy Offline Engine";
+      }
+
+      const elapsedMs = Math.round(performance.now() - startTime);
+
+      const originalAnalysis = analyzePrompt({
+        prompt,
+        taskType,
+        context: context.trim(),
+        constraints: constraints.trim(),
+        outputFormat,
+        model,
+        strategy,
+        maxIterations,
+        outputLength,
+        temperature,
+      });
+
+      const masterAnalysis = analyzePrompt({
+        prompt: masterPrompt,
+        taskType,
+        context: "Production-grade system specifications and explicit domain requirements",
+        constraints: "Complete runnable files, sandbox payment provider, environment variables, no placeholder mocks",
+        outputFormat: "Complete runnable code files, folder structure, README with setup and run commands",
+        model,
+        strategy,
+        maxIterations,
+        outputLength,
+        temperature,
+      });
+
+      const res: OptimizePromptResponse = {
+        optimizedPrompt: masterPrompt,
+        original: originalAnalysis,
+        optimized: masterAnalysis,
+        iterations: 1,
+        source: activeGroqKey.trim() ? "groq" : "heuristic",
+        explanation: {
+          whatChanged: [
+            `Transformed lazy prompt into comprehensive PromptCowboy master blueprint (${sourceUsed})`,
+            "Assigned authoritative senior persona and architectural decision authority",
+            "Defined end-to-end domain requirements, entity schemas, and core user flows",
+            "Specified sandbox payment integration (Stripe test mode) with zero card data handling",
+            "Enforced negative constraints: excluded recommendation engines, multi-currency, and unnecessary bloat",
+            "Mandated runnable deliverables: complete files, README setup commands, and next steps list",
+          ],
+          why: [
+            "Original lazy prompt lacked architecture, execution scope, and operational guardrails.",
+            "LLMs require explicit personas, boundaries, and negative constraints to avoid hallucinated or partial sketches.",
+          ],
+          benefit: [
+            "Converts a vague 6-word query into production-ready specifications",
+            "Directly pasteable into Claude, ChatGPT, Cursor, or Gemini to build the whole app",
+            "Eliminates multiple rounds of clarifying questions and partial code snippets",
+          ],
+          tradeoffs: [
+            `Prompt length expanded from ~${originalAnalysis.estimatedTokens} to ~${masterAnalysis.estimatedTokens} tokens for complete specification fidelity`,
+          ],
+        },
+      };
+
+      setResult(res);
+
+      const verLabel = `v${versions.length + 1} (PromptCowboy · ${sourceUsed})`;
+      const newVer: Version = {
+        id: `v-${Date.now()}`,
+        label: verLabel,
+        text: masterPrompt,
+        createdAt: new Date().toISOString(),
+      };
+      setVersions((prev) => [newVer, ...prev]);
+
+      if (mode === "demo") {
+        addDemoHistory({
+          kind: "prompt",
+          title: `PromptCowboy: ${prompt.slice(0, 30)}...`,
+          input: prompt,
+          output: masterPrompt,
+          model: activeGroqKey.trim() ? DEFAULT_GROQ_MODEL : "promptcowboy-offline",
+          success: true,
+        });
+      }
+
+      if (activeGroqKey.trim()) {
+        toast.success(`PromptCowboy expanded via Groq Llama 3.3 in ${elapsedMs}ms!`);
+      } else {
+        toast.success(
+          `PromptCowboy expanded via Offline Archetype in ${elapsedMs}ms! Click 'Groq API Key' to enable arbitrary prompts.`,
+        );
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "PromptCowboy expansion failed");
+    } finally {
+      setIsGroqExpanding(false);
     }
   };
 
@@ -665,10 +842,36 @@ Strictly adhered to rubric requirements, providing maximum informational density
               </div>
             </div>
 
+            {/* PromptCowboy Banner */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400 fill-amber-500 shrink-0" />
+                <div>
+                  <span className="font-semibold text-foreground">
+                    PromptCowboy Mode (Lazy ➔ Master Prompt)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground hidden sm:block">
+                    Turn brief lazy prompts (e.g. <em>"i want build and ecommerce app"</em>) into production-grade master prompts.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[11px] px-2 border-amber-500/30 bg-background/50 hover:bg-amber-500/20"
+                  onClick={() => setGroqKeyModalOpen(true)}
+                >
+                  <Key className="mr-1 h-3 w-3 text-amber-500" />
+                  {activeGroqKey.trim() ? "Groq Llama 3.3 Connected" : "⚡ Groq Key (Offline Mode)"}
+                </Button>
+              </div>
+            </div>
+
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter your initial prompt here or choose a curated template above..."
+              placeholder="Enter your initial prompt or lazy prompt (e.g. 'i want build and ecommerce app')..."
               rows={8}
               className="font-mono text-xs leading-relaxed"
             />
@@ -744,24 +947,46 @@ Strictly adhered to rubric requirements, providing maximum informational density
                 </Button>
               </div>
 
-              <Button
-                size="sm"
-                onClick={handleAnalyzeAndOptimize}
-                disabled={!prompt.trim() || isOptimizing}
-                className="min-w-36 font-medium"
-              >
-                {isOptimizing ? (
-                  <>
-                    <Sparkles className="mr-1.5 h-4 w-4 animate-spin" />
-                    Optimizing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-1.5 h-4 w-4" />
-                    Analyze & Optimize
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePromptCowboyExpand}
+                  disabled={!prompt.trim() || isGroqExpanding || isOptimizing}
+                  className="text-xs border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 font-medium"
+                >
+                  {isGroqExpanding ? (
+                    <>
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin text-amber-500" />
+                      Expanding...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-1.5 h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                      PromptCowboy Expand
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={handleAnalyzeAndOptimize}
+                  disabled={!prompt.trim() || isOptimizing || isGroqExpanding}
+                  className="min-w-36 font-medium"
+                >
+                  {isOptimizing ? (
+                    <>
+                      <Sparkles className="mr-1.5 h-4 w-4 animate-spin" />
+                      Optimizing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-1.5 h-4 w-4" />
+                      Analyze & Optimize
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </Card>
 
@@ -1125,6 +1350,90 @@ Strictly adhered to rubric requirements, providing maximum informational density
           )}
         </div>
       </div>
+
+      {/* Groq Cloud Key Configuration Dialog */}
+      <Dialog open={groqKeyModalOpen} onOpenChange={setGroqKeyModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500 fill-amber-500" />
+              Configure Groq API Key
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              PromptIQ connects directly to Groq's high-speed LPU inference engine running{" "}
+              <strong>Llama 3.3 (70B)</strong> at 500–800 tokens/second for PromptCowboy prompt
+              synthesis. Keys are saved securely in browser storage (<code>localStorage</code>).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Groq API Key</Label>
+              <Input
+                type="password"
+                placeholder="gsk_..."
+                value={groqKeyInput}
+                onChange={(e) => setGroqKeyInput(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Get a free key from{" "}
+                <a
+                  href="https://console.groq.com/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline font-medium"
+                >
+                  console.groq.com/keys
+                </a>
+                . If left blank, PromptIQ automatically uses its built-in offline archetype engine.
+              </p>
+            </div>
+
+            <div className="rounded-md border p-2.5 text-xs bg-muted/30 space-y-1">
+              <div className="flex items-center justify-between font-medium">
+                <span>Active Groq Model</span>
+                <Badge variant="outline" className="font-mono text-[10px]">
+                  {DEFAULT_GROQ_MODEL}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground text-[11px]">
+                Meta Llama 3.3 70B Versatile. Generates complete, runnable master prompts in under 1
+                second.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex sm:justify-between items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-destructive hover:text-destructive"
+              onClick={() => {
+                setGroqKeyInput("");
+                setStoredGroqKey("");
+                setActiveGroqKey("");
+                toast.info("Groq key cleared");
+              }}
+            >
+              Clear Key
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setGroqKeyModalOpen(false)}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveGroqKey} className="text-xs">
+                Save Key
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

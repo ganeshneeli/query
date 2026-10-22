@@ -393,3 +393,68 @@ export function optimizePromptHeuristic(req: OptimizePromptRequest): OptimizePro
     },
   };
 }
+
+/**
+ * Offline PromptCowboy Archetype Expander.
+ * Provides instant PromptCowboy-style master prompts when offline or without a Groq API key.
+ */
+export function expandPromptCowboyOffline(prompt: string, taskType?: string): string {
+  const p = prompt.trim().toLowerCase();
+
+  // 1. E-Commerce Archetype (Exact PromptCowboy match requested by user)
+  if (/e-?commerce|online\s+store|shopping\s+app|shop\s+app|cart\s+and\s+checkout/i.test(p)) {
+    return `You are a senior full-stack engineer who builds production-ready ecommerce applications. I want you to build an ecommerce app from scratch. I have not yet specified a stack, platform, or feature set, so make sensible, modern choices and state them clearly at the top of your response so I can see what you chose and why.
+
+Build it as a working, runnable project rather than a sketch. Cover the core shopping flow: a product catalog with listing and detail pages, a shopping cart, a checkout with an order record, and user accounts with login and order history. Include an admin path for adding and editing products. Use a database for persistence, keep secrets in environment variables, and structure the code so the payment provider can be swapped without rewriting the app. For payments, integrate a sandbox provider such as Stripe test mode and do not handle raw card data myself.
+
+Keep the scope to what makes a working store. Do not add recommendation engines, multi-currency, multi-vendor marketplaces, or complex analytics unless I ask for them later. Prioritize clean, readable code with a clear folder structure, a README with setup and run instructions, and a short list of what to build next.
+
+If the request requires assumptions about the domain (for example, what is being sold), choose a generic physical-goods store and make the product model easy to adapt. Deliver the project as complete files I can run locally, and close with the exact commands to install, configure, and start it.`;
+  }
+
+  // 2. SaaS / Web App Archetype
+  if (/saas|web\s+app|dashboard|crm|subscription|portal/i.test(p)) {
+    return `You are a principal software engineer specialized in building multi-tenant SaaS applications. I want you to build a production-ready SaaS web application from scratch based on the requirement: "${prompt.trim()}". I have not specified a technology stack or schema, so make modern, battle-tested choices (e.g., TypeScript, modern framework, relational DB with migrations) and state them with brief rationale at the beginning.
+
+Build this as a fully functional, runnable application rather than an abstract prototype. Implement authentication, user session management, role-based access control, an intuitive dashboard with responsive data tables, and CRUD operations for the core resource. Use environment variables for all secrets and database connection strings.
+
+Keep the scope focused on core SaaS workflows. Do not include unrequested AI wrappers, complex enterprise SSO, or multi-region failover unless requested. Prioritize clean modular code, clear file organization, zero placeholder functions, and a comprehensive README with environment setup and startup commands.`;
+  }
+
+  // 3. REST API / Backend Microservice Archetype
+  if (/api|backend|rest\s+service|microservice|database|crud\s+backend/i.test(p)) {
+    return `You are a senior backend architect who designs robust, production-grade REST APIs. I want you to build a complete backend service from scratch for: "${prompt.trim()}". Make sensible, modern architectural choices and state your stack and design principles clearly up front.
+
+Implement full CRUD endpoints with strict input validation, comprehensive error handling with RFC 7807 problem details, health check probes (/healthz), and database persistence with an automated migration script. Ensure all secrets and configuration values are loaded from environment variables.
+
+Strictly avoid mock stubs or incomplete handlers. Provide complete, runnable code files with unit and integration tests for critical routes, OpenAPI documentation, and explicit commands to initialize the database and run the service locally.`;
+  }
+
+  // 4. Game Development Archetype
+  if (/game|snake|arcade|puzzle|pygame|unity|canvas/i.test(p)) {
+    return `You are a veteran game developer who crafts polished, bug-free games. I want you to build a fully playable game from scratch based on: "${prompt.trim()}". Choose a modern, accessible platform/framework and state your choice and why at the top.
+
+Deliver a complete, self-contained, and immediately runnable game with a complete game loop, responsive keyboard/mouse controls, collision detection, scoring, state management (start screen, active play, pause, game over, restart), and sound/visual cues. Ensure smooth frame rate pacing and edge-case collision handling.
+
+Deliver the complete code in full without placeholders, accompanied by instructions on how to install dependencies and run the game with zero friction.`;
+  }
+
+  // 5. General PromptCowboy Synthesis Fallback
+  const persona =
+    taskType === "Coding"
+      ? "senior software engineer and systems architect"
+      : taskType === "Research"
+        ? "senior research scientist and domain analyst"
+        : taskType === "Data Analysis"
+          ? "principal data engineer and quantitative analyst"
+          : taskType === "Writing"
+            ? "executive technical communications strategist"
+            : "senior solutions architect";
+
+  return `You are a ${persona} who delivers production-grade solutions. I want you to design and build a complete solution from scratch for: "${prompt.trim()}". I have not yet specified a detailed stack, methodology, or constraint set, so make sensible, modern choices and state them clearly at the top with your engineering rationale.
+
+Deliver this as a working, runnable project rather than a sketch or superficial mockup. Implement the end-to-end core workflow, provide realistic data structures and error handling, adhere to strict modular boundaries, and ensure all configuration and secrets are decoupled into environment variables.
+
+Keep the scope focused strictly on the essential requirements to create a robust, production-ready system. Do not introduce premature complexity, unneeded third-party bloat, or extraneous abstractions. Provide complete code files with clear folder hierarchy, a README detailing exact local setup and execution commands, and a prioritized list of next steps for production hardening.`;
+}
+

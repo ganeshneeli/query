@@ -323,7 +323,7 @@ export function SettingsPage() {
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Configured Model Providers
               </Label>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                 {[
                   {
                     name: "OpenAI",
@@ -337,6 +337,11 @@ export function SettingsPage() {
                   },
                   { name: "Google", status: "Configured via backend", models: "gemini-1.5-pro" },
                   { name: "Meta (vLLM)", status: "Local worker endpoint", models: "llama-3.1-70b" },
+                  {
+                    name: "Groq (PromptCowboy)",
+                    status: "LPU Engine (~800 tok/s)",
+                    models: "llama-3.3-70b-versatile",
+                  },
                 ].map((p) => (
                   <div key={p.name} className="rounded-lg border p-3 space-y-1 text-xs bg-muted/20">
                     <div className="flex items-center justify-between">
