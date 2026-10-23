@@ -266,22 +266,25 @@ function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="default" className="h-7 text-xs bg-primary text-primary-foreground font-semibold shadow-sm" asChild>
+              <Link to="/workflow">
+                <Sparkles className="mr-1 h-3 w-3 fill-current" />
+                Integrated AI Framework
+              </Link>
+            </Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
               <Link to="/prompt-lab">
-                <Sparkles className="mr-1 h-3 w-3 text-primary" />
                 Prompt Lab
               </Link>
             </Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
               <Link to="/query-lab">
-                <Gauge className="mr-1 h-3 w-3 text-teal-600" />
                 Query Lab
               </Link>
             </Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
               <Link to="/evaluation">
-                <FileText className="mr-1 h-3 w-3 text-indigo-600" />
-                Evaluation Studio
+                Evaluation
               </Link>
             </Button>
           </div>

@@ -13,7 +13,8 @@ import {
 
 export const NAV = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Prompt Lab", url: "/prompt-lab", icon: Sparkles },
+  { title: "Integrated Framework", url: "/workflow", icon: Sparkles },
+  { title: "Prompt Lab", url: "/prompt-lab", icon: Beaker },
   { title: "Query Lab", url: "/query-lab", icon: Database },
   { title: "Evaluation Studio", url: "/evaluation", icon: Gauge },
   { title: "Experiments", url: "/experiments", icon: FlaskConical },
