@@ -14,7 +14,8 @@ dist-ssr
 .vinxi
 .tanstack/**
 .nitro
-.netlify
+.vercel/
+.netlify/
 *.local
 .env
 .env.*

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "postbuild": "node -e \"const fs = require('fs'); const path = require('path'); const target = path.join('dist', 'client'); fs.mkdirSync(target, { recursive: true }); for (const file of fs.readdirSync('dist')) { if (file !== 'client') { fs.cpSync(path.join('dist', file), path.join(target, file), { recursive: true }); } }\"",
+    "build:vercel": "NITRO_PRESET=vercel vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
