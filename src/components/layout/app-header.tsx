@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Bell, LogOut, Moon, Search, Settings, Sun, LifeBuoy } from "lucide-react";
+import { Bell, LogOut, Moon, Search, Settings, Sun, LifeBuoy, Zap } from "lucide-react";
+import { hasLiveLlmKey } from "@/lib/api/groq";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,15 @@ export function AppHeader() {
         </Breadcrumb>
         <span className="truncate text-sm font-medium sm:hidden">{page?.title}</span>
       </div>
+      {hasLiveLlmKey() && (
+        <Badge
+          variant="outline"
+          className="hidden border-primary/40 bg-primary/10 text-primary sm:inline-flex items-center gap-1 text-[11px] font-medium"
+        >
+          <Zap className="h-3 w-3 fill-primary text-primary" />
+          <span>Groq LPU Active</span>
+        </Badge>
+      )}
       <Badge
         variant="outline"
         className={
@@ -112,7 +122,7 @@ export function AppHeader() {
             notes.map((n) => (
               <button
                 key={n.id}
-                onClick={() => navigate({ to: "/experiments", search: { id: n.id } })}
+                onClick={() => navigate({ to: "/dashboard" })}
                 className="block w-full border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted"
               >
                 <span className="font-medium">{n.name}</span>

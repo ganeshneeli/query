@@ -21,10 +21,10 @@ export function MetricCard({
 }) {
   const good = delta == null ? null : invert ? delta < 0 : delta > 0;
   return (
-    <Card className="gap-0 rounded-xl p-4 shadow-none">
+    <Card className="gap-0 rounded-xl p-4 shadow-none glow-card transition-all hover:shadow-sm">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          {Icon && <Icon className="h-4 w-4" />} {label}
+        <span className="flex items-center gap-1.5 font-medium">
+          {Icon && <Icon className="h-4 w-4 text-primary" />} {label}
         </span>
         <Tooltip>
           <TooltipTrigger aria-label={`About ${label}`}>
@@ -33,11 +33,11 @@ export function MetricCard({
           <TooltipContent className="max-w-xs">{tip}</TooltipContent>
         </Tooltip>
       </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{value}</div>
       {delta != null && (
         <div
           className={cn(
-            "mt-1 flex items-center gap-1 text-xs",
+            "mt-1 flex items-center gap-1 text-xs font-medium",
             good ? "text-success" : "text-destructive",
           )}
         >
@@ -47,7 +47,7 @@ export function MetricCard({
             <ArrowDownRight className="h-3.5 w-3.5" />
           )}
           {Math.abs(delta).toFixed(1)}%{" "}
-          <span className="text-muted-foreground">vs previous period</span>
+          <span className="text-muted-foreground font-normal">vs previous period</span>
         </div>
       )}
     </Card>
@@ -68,7 +68,7 @@ export function ChartCard({
   className?: string;
 }) {
   return (
-    <Card className={cn("gap-0 rounded-xl p-4 shadow-none", className)}>
+    <Card className={cn("gap-0 rounded-xl p-4 shadow-none glow-card transition-all", className)}>
       <div className="mb-4 flex items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-medium">{title}</h3>

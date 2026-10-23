@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertCircle,
   AlertTriangle,
@@ -279,6 +279,31 @@ export function QueryLabPage() {
         title="Query Lab"
         description="Optimize lexical search keywords, vector RAG retrieval pipelines, and SQL execution performance."
       />
+
+      {/* Integrated Framework Banner in Query Lab */}
+      <Card className="p-4 shadow-none border-primary/25 bg-gradient-to-r from-primary/5 via-accent/5 to-background glow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-primary text-primary-foreground text-[10px] font-semibold">
+                Innovation Pipeline
+              </Badge>
+              <span className="text-xs font-semibold text-foreground">
+                Stage 2 of the Integrated AI Framework: Query Reformulation
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Transform natural language into Boolean syntax, Lucene terms, dense vector embeddings, and AST-optimized SQL queries with measurable token and cost savings.
+            </p>
+          </div>
+          <Button size="sm" variant="default" className="h-8 text-xs bg-primary text-primary-foreground font-semibold shadow-sm shrink-0" asChild>
+            <Link to="/workflow">
+              <Sparkles className="mr-1.5 h-3.5 w-3.5 fill-current" />
+              Run Full 4-Stage Workflow →
+            </Link>
+          </Button>
+        </div>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3 max-w-md">

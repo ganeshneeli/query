@@ -537,7 +537,7 @@ export function runRagPipelineHeuristic(req: OptimizeQueryRequest): RagResult & 
 
   // Grounded Answer Synthesis
   let answerSummary = "No documents met the similarity threshold for this query.";
-  if (filteredDocs.length > 0) {
+  if (filteredDocs.length > 0 && filteredDocs[0]) {
     const topDoc = filteredDocs[0];
     answerSummary = `According to ${topDoc.title}: ${topDoc.snippet.slice(0, 160)}... (Confidence: ${(topDoc.score * 100).toFixed(0)}%)`;
   }

@@ -143,7 +143,7 @@ export function HelpPage() {
                 correctness, instruction following, and latency.
               </p>
               <Button variant="outline" size="sm" asChild className="w-full text-xs">
-                <Link to="/evaluation">Open Studio →</Link>
+                <Link to="/workflow">Open Framework →</Link>
               </Button>
             </Card>
 

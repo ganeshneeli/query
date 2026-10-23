@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LifeBuoy, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -49,9 +50,19 @@ export function AppSidebar() {
                     isActive={path.startsWith(item.url)}
                     tooltip={item.title}
                   >
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
+                    <Link to={item.url} className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span>{item.title}</span>
+                      </div>
+                      {item.url === "/workflow" && !collapsed && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] px-1.5 py-0 h-4 bg-primary/15 text-primary border-0 font-semibold"
+                        >
+                          Core
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

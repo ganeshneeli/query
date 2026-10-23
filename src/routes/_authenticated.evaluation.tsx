@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowDownRight,
@@ -69,6 +69,9 @@ import type { EvaluationMetric, ScoreSource } from "@/lib/api/types";
 import { downloadFile, fmtDate, fmtMs, fmtNum, fmtUsd, toCsv } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/evaluation")({
+  beforeLoad: () => {
+    throw redirect({ to: "/workflow" });
+  },
   validateSearch: (search: Record<string, unknown>): { id?: string | undefined } => ({
     id: typeof search["id"] === "string" ? search["id"] : undefined,
   }),
@@ -233,8 +236,33 @@ function EvaluationStudioPage() {
         </div>
       </div>
 
+      {/* Integrated Framework Banner */}
+      <Card className="p-4 shadow-none border-primary/25 bg-gradient-to-r from-primary/5 via-accent/5 to-background glow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-primary text-primary-foreground text-[10px] font-semibold">
+                Live Benchmarking
+              </Badge>
+              <span className="text-xs font-semibold text-foreground">
+                Looking for Live Dual LLM Execution & Direct Optimization?
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Run real-time side-by-side inference on Groq LPUs, measure 5-dimensional empirical radar deltas, and refine outputs using feedback steering in the Integrated AI Framework.
+            </p>
+          </div>
+          <Button size="sm" variant="default" className="h-8 text-xs bg-primary text-primary-foreground font-semibold shadow-sm shrink-0" asChild>
+            <Link to="/workflow">
+              <Sparkles className="mr-1.5 h-3.5 w-3.5 fill-current" />
+              Open Integrated Framework →
+            </Link>
+          </Button>
+        </div>
+      </Card>
+
       {/* Configuration Toolbar */}
-      <Card className="p-4 shadow-none">
+      <Card className="p-4 shadow-none glow-card">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className="space-y-1.5">
             <Label className="text-xs">Experiment</Label>
@@ -351,7 +379,7 @@ function EvaluationStudioPage() {
                 const isPassing = metric.optimized >= minQuality;
 
                 return (
-                  <Card key={metric.key} className="p-4 shadow-none space-y-3">
+                  <Card key={metric.key} className="p-4 shadow-none space-y-3 glow-card">
                     <div className="flex items-start justify-between gap-1">
                       <div>
                         <span className="font-semibold text-sm">{metric.label}</span>

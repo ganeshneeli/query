@@ -225,15 +225,14 @@ src/
 │   └── theme.tsx        # Dark/Light theme provider with instant toggle
 └── routes/
     ├── _authenticated.dashboard.tsx   # Page 1: Analytics & Experiment Dashboard
-    ├── _authenticated.prompt-lab.tsx   # Page 2: Prompt Optimization & Heuristics Lab
-    ├── _authenticated.query-lab.tsx    # Page 3: Search, RAG & SQL Query Lab
-    ├── _authenticated.evaluation.tsx   # Page 4: 7-Metric Evaluation Studio
-    ├── _authenticated.experiments.tsx  # Page 5: Experiment Management & Lifecycle
-    ├── _authenticated.history.tsx      # Page 6: Session Auditing & Prompt Restoration
-    ├── _authenticated.analytics.tsx    # Page 7: Performance Insights & CSV Export
-    ├── _authenticated.settings.tsx     # Page 8: Models, Guardrails & Privacy Settings
-    ├── _authenticated.help.tsx         # Page 9: Documentation, Guides & FAQs
-    └── login.tsx                       # Page 10: Authentication & Access Control
+    ├── _authenticated.workflow.tsx    # Page 2: Flagship Integrated AI Framework (4-Stage Pipeline)
+    ├── _authenticated.prompt-lab.tsx   # Page 3: Prompt Optimization & Heuristics Lab
+    ├── _authenticated.query-lab.tsx    # Page 4: Search, RAG & SQL Query Lab
+    ├── _authenticated.history.tsx      # Page 5: Session Auditing & Prompt Restoration
+    ├── _authenticated.analytics.tsx    # Page 6: Performance Insights & CSV Export
+    ├── _authenticated.settings.tsx     # Page 7: Models, Guardrails & Privacy Settings
+    ├── _authenticated.help.tsx         # Page 8: Documentation, Guides & FAQs
+    └── login.tsx                       # Page 9: Authentication & Access Control
 ```
 
 #### Detailed Breakdown of Implemented Modules:
@@ -241,29 +240,28 @@ src/
    - 6 dynamic KPI cards: Total Experiments, Avg Quality Score, Tokens Saved, Avg Latency, Estimated Cost, Optimization Success Rate.
    - Interactive charts powered by Recharts: Response Quality Over Time (Line), Latency Comparison (Bar), Token Consumption (Area), Cost per Experiment (Bar), Optimization Distribution (Donut).
    - Real-time experiments table with search, status filtering, column sorting, pagination, and run/duplicate/delete dialogs.
-2. **Prompt Lab Workspace (`_authenticated.prompt-lab.tsx`)**:
+2. **Flagship Integrated AI Framework (`_authenticated.workflow.tsx`)**:
+   - **Objectives & Innovation Engine**: Directly embodies the 4 core objectives and expected outcomes in a continuous closed loop.
+   - **Stage 1 (Prompt Optimization)**: Converts terse prompts into structured master prompts (Role, Task, Context, Constraints, Format) using live Groq LPUs (`qwen/qwen3.8-27b`, `openai/gpt-oss-120b`).
+   - **Stage 2 (Query Reformulation)**: Multi-engine NLP query restructuring into Boolean, Lucene, Web, and Dense Semantic syntax.
+   - **Stage 3 (Real Dual LLM Execution & Evaluation)**: Executes baseline and optimized prompts concurrently against live Groq models with wall-clock latency, token usage, and 5-dimensional evaluation (Relevance, Accuracy, Consistency, Token Efficiency, Latency). Features an interactive live Recharts Radar Chart.
+   - **Stage 4 (Feedback-Based Refinement)**: Closed-loop iteration with directive steering and full trajectory history tracking.
+3. **Prompt Lab Workspace (`_authenticated.prompt-lab.tsx`)**:
    - Two-column responsive editor with real-time character and token counter.
    - Context, constraint, and output format selectors.
    - Rule-based issue detection panel highlighting Ambiguity, Missing Context, Missing Constraints, Unspecified Format, and Unnecessary Wording.
    - Side-by-side diff comparison showing original vs. optimized prompt with rationale, expected benefits, and trade-offs.
    - Version history drawer for restoring and comparing previous optimization iterations.
-3. **Multi-Modal Query Lab (`_authenticated.query-lab.tsx`)**:
+4. **Multi-Modal Query Lab (`_authenticated.query-lab.tsx`)**:
    - **Search Query Tab**: NLP intent classification, search expansion queries, keyword tagging, synonym suggestions, entity detection.
    - **RAG Retrieval Tab**: Document collection selection, Top-K slider (1-20), similarity threshold tuning (0-1.0), query rewriting switch, precision@k and mean relevance scores.
    - **SQL Query Tab**: CodeMirror SQL syntax editor with dialect selection (PostgreSQL, MySQL, SQLite, Snowflake), schema definition input, query validation, index recommendations, execution plan viewer, and execution time comparison.
-4. **Evaluation Studio (`_authenticated.evaluation.tsx`)**:
-   - Multi-metric benchmark grid with 7 metrics: Relevance, Correctness, Completeness, Clarity, Instruction Following, Groundedness, Semantic Preservation.
-   - Comparative response inspection highlighting textual differences.
-   - Performance analytics displaying input/output tokens, latency (ms), TTFT, API cost, and model calls.
-   - Export evaluation reports in CSV or JSON format.
-5. **Experiments Manager (`_authenticated.experiments.tsx`)**:
-   - Complete experiment lifecycle: Create Experiment modal, status badges (*draft, queued, running, completed, failed*), progress bar polling, start/pause/cancel/delete controls.
-6. **Session History & Auditing (`_authenticated.history.tsx`)**:
+5. **Session History & Auditing (`_authenticated.history.tsx`)**:
    - Searchable, filterable audit log of all prompt and query optimization runs with one-click restore and re-run actions.
-7. **Analytics Studio (`_authenticated.analytics.tsx`)**:
+6. **Analytics Studio (`_authenticated.analytics.tsx`)**:
    - Deep-dive charts for cost trends, latency distributions, model comparisons, and exportable analytics summaries.
-8. **Settings & Guardrails (`_authenticated.settings.tsx`)**:
-   - Configurable optimization strategies, maximum iterations, quality thresholds, model provider selections (OpenAI, Anthropic, Ollama), and local data clearing.
+7. **Settings & Guardrails (`_authenticated.settings.tsx`)**:
+   - Configurable optimization strategies, maximum iterations, quality thresholds, model provider selections (Groq, OpenAI, Anthropic, Ollama), and local data clearing.
 
 ### 3.3 Database, UI, Backend & Model Development Status
 - **UI & Interaction**: **100% complete** with responsive design, keyboard shortcuts, modal dialogs, and toast notifications via Sonner.

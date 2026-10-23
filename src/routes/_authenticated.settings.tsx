@@ -338,9 +338,9 @@ export function SettingsPage() {
                   { name: "Google", status: "Configured via backend", models: "gemini-1.5-pro" },
                   { name: "Meta (vLLM)", status: "Local worker endpoint", models: "llama-3.1-70b" },
                   {
-                    name: "Groq (PromptCowboy)",
+                    name: "Groq (LPU Inference Engine)",
                     status: "LPU Engine (~800 tok/s)",
-                    models: "llama-3.3-70b-versatile",
+                    models: "llama-3.3-70b-versatile, qwen-2.5-32b",
                   },
                 ].map((p) => (
                   <div key={p.name} className="rounded-lg border p-3 space-y-1 text-xs bg-muted/20">

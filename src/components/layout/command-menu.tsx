@@ -54,10 +54,10 @@ export function CommandMenu() {
         <CommandSeparator />
         <CommandGroup heading="Actions">
           <CommandItem
-            onSelect={() => go(() => navigate({ to: "/experiments", search: { new: true } }))}
+            onSelect={() => go(() => navigate({ to: "/workflow" }))}
           >
-            <Plus className="mr-2 h-4 w-4" />
-            New experiment
+            <Sparkles className="mr-2 h-4 w-4" />
+            Run Integrated Framework
           </CommandItem>
           <CommandItem onSelect={() => go(() => navigate({ to: "/prompt-lab" }))}>
             <Sparkles className="mr-2 h-4 w-4" />

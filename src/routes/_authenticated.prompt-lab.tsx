@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -114,7 +115,7 @@ const CURATED_EXAMPLES: {
   format: string;
 }[] = [
   {
-    label: "Lazy: Ecommerce App (PromptCowboy)",
+    label: "Ecommerce App Architecture",
     taskType: "Coding",
     prompt: "i want build and ecommerce app",
     context: "",
@@ -341,11 +342,6 @@ export function PromptLabPage() {
         context: context.trim(),
         constraints: constraints.trim(),
         outputFormat,
-        model,
-        strategy,
-        maxIterations,
-        outputLength,
-        temperature,
       });
 
       const masterAnalysis = analyzePrompt({
@@ -356,11 +352,6 @@ export function PromptLabPage() {
           "Comprehensive deliverables, strict operational boundaries, and zero placeholder mocks",
         outputFormat:
           "Complete runnable specification and structured master prompt",
-        model,
-        strategy,
-        maxIterations,
-        outputLength,
-        temperature,
       });
 
       const res: OptimizePromptResponse = {
@@ -368,7 +359,7 @@ export function PromptLabPage() {
         original: originalAnalysis,
         optimized: masterAnalysis,
         iterations: 1,
-        source: key && sourceUsed.includes("Groq") ? "groq" : "heuristic",
+        source: key && sourceUsed.includes("Groq") ? "llm_judge" : "heuristic",
         explanation: {
           whatChanged: [
             `Synthesized master prompt via ${sourceUsed}`,
@@ -650,148 +641,128 @@ Strictly adhered to rubric requirements, providing maximum informational density
         }
       />
 
-      {/* Top Configuration Toolbar */}
-      <Card className="p-4 shadow-none">
-        <div className="flex items-center justify-between pb-3 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          <span className="flex items-center gap-1.5">
-            <Sliders className="h-3.5 w-3.5" /> Optimization Configuration
-          </span>
-          <span className="font-mono lowercase">{model}</span>
-        </div>
-
-        <div className="grid gap-4 pt-3 sm:grid-cols-2 lg:grid-cols-6">
-          {/* Task Type */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Task Type</Label>
-            <Select value={taskType} onValueChange={(v: PromptTaskType) => setTaskType(v)}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="General">General</SelectItem>
-                <SelectItem value="Coding">Coding</SelectItem>
-                <SelectItem value="Research">Research</SelectItem>
-                <SelectItem value="Summarization">Summarization</SelectItem>
-                <SelectItem value="Education">Education</SelectItem>
-                <SelectItem value="Data Analysis">Data Analysis</SelectItem>
-                <SelectItem value="Writing">Writing</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Model Selector */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Target Model</Label>
-            <ModelSelector value={model} onChange={setModel} className="h-9 text-xs" />
-          </div>
-
-          {/* Optimization Strategy */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Strategy</Label>
-            <Select value={strategy} onValueChange={(v: Strategy) => setStrategy(v)}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Balanced">Balanced</SelectItem>
-                <SelectItem value="Quality First">Quality First</SelectItem>
-                <SelectItem value="Low Cost">Low Cost</SelectItem>
-                <SelectItem value="Low Latency">Low Latency</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Max Iterations */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <Label className="text-xs">Max Iterations</Label>
-              <span className="font-mono text-muted-foreground">{maxIterations}</span>
+      {/* Sleek Essential Configuration & Unified Studio Bar */}
+      <Card className="p-3 shadow-none glow-card border-border/70">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Left: Essential Controls */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Target Model */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Model:</span>
+              <ModelSelector value={model} onChange={setModel} className="h-8 text-xs min-w-[140px]" />
             </div>
-            <Slider
-              value={[maxIterations]}
-              min={1}
-              max={5}
-              step={1}
-              onValueChange={([v]) => v !== undefined && setMaxIterations(v)}
-              className="pt-2"
-            />
-          </div>
 
-          {/* Output Length */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Output Length</Label>
-            <Select
-              value={outputLength}
-              onValueChange={(v: "short" | "medium" | "long") => setOutputLength(v)}
-            >
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="short">Short (&lt;120 words)</SelectItem>
-                <SelectItem value="medium">Medium (150–300 words)</SelectItem>
-                <SelectItem value="long">Long (up to 800 words)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Temperature */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <Label className="text-xs">Temperature</Label>
-              <span className="font-mono text-muted-foreground">
-                {supportsTemperature(model) ? temperature.toFixed(1) : "n/a"}
-              </span>
+            {/* Task Type */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Task:</span>
+              <Select value={taskType} onValueChange={(v: PromptTaskType) => setTaskType(v)}>
+                <SelectTrigger className="h-8 text-xs min-w-[110px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="General">General</SelectItem>
+                  <SelectItem value="Coding">Coding</SelectItem>
+                  <SelectItem value="Research">Research</SelectItem>
+                  <SelectItem value="Summarization">Summarization</SelectItem>
+                  <SelectItem value="Education">Education</SelectItem>
+                  <SelectItem value="Data Analysis">Data Analysis</SelectItem>
+                  <SelectItem value="Writing">Writing</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Slider
-              value={[temperature]}
-              min={0}
-              max={1}
-              step={0.1}
-              disabled={!supportsTemperature(model)}
-              onValueChange={([v]) => v !== undefined && setTemperature(v)}
-              className="pt-2"
-            />
+
+            {/* Strategy */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Strategy:</span>
+              <Select value={strategy} onValueChange={(v: Strategy) => setStrategy(v)}>
+                <SelectTrigger className="h-8 text-xs min-w-[115px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Balanced">Balanced</SelectItem>
+                  <SelectItem value="Quality First">Quality First</SelectItem>
+                  <SelectItem value="Low Cost">Low Cost</SelectItem>
+                  <SelectItem value="Low Latency">Low Latency</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Advanced Generation Parameters Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground">
+                  <Sliders className="mr-1.5 h-3.5 w-3.5" />
+                  Parameters
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3 space-y-3" align="start">
+                <div className="text-xs font-semibold pb-1 border-b">Advanced Generation Parameters</div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <Label className="text-xs">Max Iterations</Label>
+                    <span className="font-mono text-muted-foreground">{maxIterations}</span>
+                  </div>
+                  <Slider
+                    value={[maxIterations]}
+                    min={1}
+                    max={5}
+                    step={1}
+                    onValueChange={([v]) => v !== undefined && setMaxIterations(v)}
+                    className="pt-1"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Output Length</Label>
+                  <Select
+                    value={outputLength}
+                    onValueChange={(v: "short" | "medium" | "long") => setOutputLength(v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="short">Short (&lt;120 words)</SelectItem>
+                      <SelectItem value="medium">Medium (150–300 words)</SelectItem>
+                      <SelectItem value="long">Long (up to 800 words)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <Label className="text-xs">Temperature</Label>
+                    <span className="font-mono text-muted-foreground">
+                      {supportsTemperature(model) ? temperature.toFixed(1) : "n/a"}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[temperature]}
+                    min={0}
+                    max={1}
+                    step={0.1}
+                    disabled={!supportsTemperature(model)}
+                    onValueChange={([v]) => v !== undefined && setTemperature(v)}
+                    className="pt-1"
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Right: Unified 4-Stage Studio Shortcut */}
+          <div className="flex items-center gap-2">
+            <Link to="/workflow">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs px-2.5 rounded font-medium border-primary/30 hover:bg-primary/10 text-primary"
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary fill-primary/20" />
+                Launch 4-Stage Studio →
+              </Button>
+            </Link>
           </div>
         </div>
       </Card>
-
-      {/* Integrated AI Optimization Framework Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs">
-        <div className="flex items-center gap-2">
-          <Badge className="bg-primary text-primary-foreground text-[10px]">Framework</Badge>
-          <span className="font-medium text-foreground">
-            Integrated AI Optimization & Refinement Workflow
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span
-              className={`flex items-center gap-1 font-semibold ${!result ? "text-primary" : "text-emerald-600 dark:text-emerald-400"}`}
-            >
-              1. Prompt Optimization
-            </span>
-            <span>→</span>
-            <span className={`flex items-center gap-1 font-semibold ${result ? "text-primary" : ""}`}>
-              2. Response Evaluation
-            </span>
-            <span>→</span>
-            <span className={`flex items-center gap-1 font-semibold ${result ? "text-primary" : ""}`}>
-              3. Feedback-Based Refinement
-            </span>
-          </div>
-          <Link to="/workflow">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-6 text-[11px] px-2.5 rounded font-medium border-primary/30 hover:bg-primary/10"
-            >
-              <Sparkles className="mr-1 h-3 w-3 text-primary" />
-              Launch Unified 4-Stage Studio →
-            </Button>
-          </Link>
-        </div>
-      </div>
 
       {/* Main Two-Column Layout */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -804,6 +775,17 @@ Strictly adhered to rubric requirements, providing maximum informational density
                 <Badge variant="secondary" className="font-mono text-xs">
                   {prompt.length} chars · ~{tokens} tokens
                 </Badge>
+                {activeGroqKey.trim() && (
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20"
+                    onClick={() => setGroqKeyModalOpen(true)}
+                    title="Groq API key connected"
+                  >
+                    <Zap className="h-2.5 w-2.5 fill-current" />
+                    <span>Groq Live</span>
+                  </Badge>
+                )}
               </div>
 
               {/* Template / Example Dropdown */}
@@ -849,36 +831,10 @@ Strictly adhered to rubric requirements, providing maximum informational density
               </div>
             </div>
 
-            {/* PromptCowboy Banner */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400 fill-amber-500 shrink-0" />
-                <div>
-                  <span className="font-semibold text-foreground">
-                    PromptCowboy Mode (Lazy ➔ Master Prompt)
-                  </span>
-                  <p className="text-[11px] text-muted-foreground hidden sm:block">
-                    Turn brief lazy prompts (e.g. <em>"what is java"</em> or <em>"i want build and ecommerce app"</em>) into production-grade master prompts.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[11px] px-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 font-medium"
-                  onClick={() => setGroqKeyModalOpen(true)}
-                >
-                  <Sparkles className="mr-1 h-3 w-3 text-emerald-500" />
-                  {activeGroqKey.trim() ? "⚡ Groq LLM Connected" : "⚡ Groq LLM (Workspace Key Active)"}
-                </Button>
-              </div>
-            </div>
-
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter your initial prompt or lazy prompt (e.g. 'what is java' or 'i want build and ecommerce app')..."
+              placeholder="Enter your prompt to analyze, optimize, and benchmark (e.g., 'what is java' or 'how to build a rag pipeline')..."
               rows={8}
               className="font-mono text-xs leading-relaxed"
             />
@@ -1080,7 +1036,7 @@ Strictly adhered to rubric requirements, providing maximum informational density
                     <span className="text-sm font-semibold">
                       Optimized Prompt
                     </span>
-                    {result.source === "groq" ? (
+                    {result.source === "llm_judge" ? (
                       <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 text-[10px] font-medium flex items-center gap-1">
                         <Sparkles className="h-2.5 w-2.5 text-emerald-500" />
                         Live Groq Synthesis
@@ -1360,7 +1316,7 @@ Strictly adhered to rubric requirements, providing maximum informational density
             </DialogTitle>
             <DialogDescription className="text-xs">
               PromptIQ connects directly to Groq's high-speed LPU inference engine running{" "}
-              <strong>Llama 3.3 (70B)</strong> at 500–800 tokens/second for PromptCowboy prompt
+              <strong>Llama 3.3 (70B)</strong> at 500–800 tokens/second for automated prompt
               synthesis. Keys are saved securely in browser storage (<code>localStorage</code>).
             </DialogDescription>
           </DialogHeader>

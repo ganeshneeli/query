@@ -282,11 +282,6 @@ function DashboardPage() {
                 Query Lab
               </Link>
             </Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
-              <Link to="/evaluation">
-                Evaluation
-              </Link>
-            </Button>
           </div>
         </div>
 
@@ -578,7 +573,7 @@ function DashboardPage() {
             </p>
           </div>
           <Button size="sm" variant="outline" asChild>
-            <Link to="/experiments">View All Experiments</Link>
+            <Link to="/history">View Audit History</Link>
           </Button>
         </div>
 
@@ -753,11 +748,11 @@ function DashboardPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() =>
-                                navigate({ to: "/evaluation", search: { id: exp.id } })
+                                navigate({ to: "/workflow" })
                               }
                             >
-                              <Gauge className="mr-2 h-4 w-4" />
-                              Open in Studio
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Open in Framework
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => run.mutate(exp.id)}
@@ -981,13 +976,12 @@ function DashboardPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const id = selectedExp.id;
                   setSelectedExp(null);
-                  navigate({ to: "/evaluation", search: { id } });
+                  navigate({ to: "/workflow" });
                 }}
               >
-                <Gauge className="mr-1.5 h-4 w-4" />
-                Open in Evaluation Studio
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                Open in Integrated Framework
               </Button>
               <div className="flex gap-2">
                 <Button

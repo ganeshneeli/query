@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import {
   AlertCircle,
   Copy,
@@ -72,6 +72,9 @@ import type { CreateExperimentInput, Experiment, Strategy, TaskType } from "@/li
 import { fmtDate, fmtMs, fmtNum, fmtUsd, TASK_LABEL } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/experiments")({
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
   validateSearch: (search: Record<string, unknown>): {
     new?: boolean | undefined;
     id?: string | undefined;
